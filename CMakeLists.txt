@@ -77,3 +77,5 @@ if (HIDE_PRIVATE_SYMBOLS AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   # once minimum CMake version is bumped up to 3.13 or above.
   target_link_libraries(${LIB_NAME} ${HIDE_SYMBOLS_LINKER_FLAGS})
 endif()
+
+add_subdirectory(test)

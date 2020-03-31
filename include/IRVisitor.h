@@ -22,27 +22,42 @@
  * SOFTWARE.
 */
 
-#ifndef BOOST_ARITH_H
-#define BOOST_ARITH_H
+#ifndef BOOST_IRVISITOR_H
+#define BOOST_IRVISITOR_H
+
+#include "IR.h"
+
 
 namespace Boost {
 
-namespace Arith {
+namespace Internal {
 
-class Bounds {
- private:
-    std::vector<std::pair<size_t, size_t>> bounds;
+class IRVisitor {
  public:
-    Bounds() {}
-
-    Bounds(const Bounds &other) : bounds(other.bounds) {}
-
-    Bounds(const Bounds &&other) : bounds(other.bounds) {}
+    virtual void visit(Ref<const IntImm>);
+    virtual void visit(Ref<const UIntImm>);
+    virtual void visit(Ref<const FloatImm>);
+    virtual void visit(Ref<const StringImm>);
+    virtual void visit(Ref<const Unary>);
+    virtual void visit(Ref<const Binary>);
+    virtual void visit(Ref<const Select>);
+    virtual void visit(Ref<const Compare>);
+    virtual void visit(Ref<const Call>);
+    virtual void visit(Ref<const Var>);
+    virtual void visit(Ref<const Cast>);
+    virtual void visit(Ref<const Ramp>);
+    virtual void visit(Ref<const Index>);
+    virtual void visit(Ref<const Dom>);
+    virtual void visit(Ref<const LoopNest>);
+    virtual void visit(Ref<const IfThenElse>);
+    virtual void visit(Ref<const Move>);
+    virtual void visit(Ref<const Kernel>);
+ private:
 };
 
-}  // namespace Arith
+}  // namespace Internal
 
 }  // namespace Boost
 
 
-#endif  // BOOST_ARITH_H
+#endif  // BOOST_IRVISITOR_H

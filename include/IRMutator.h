@@ -22,3 +22,46 @@
  * SOFTWARE.
 */
 
+#ifndef BOOST_IRMUTATOR_H
+#define BOOST_IRMUTATOR_H
+
+#include "IR.h"
+
+
+namespace Boost {
+
+namespace Internal {
+
+class IRMutator {
+ public:
+    Expr mutate(const Expr&);
+    Stmt mutate(const Stmt&);
+    Group mutate(const Group&);
+
+    virtual Expr visit(Ref<const IntImm>);
+    virtual Expr visit(Ref<const UIntImm>);
+    virtual Expr visit(Ref<const FloatImm>);
+    virtual Expr visit(Ref<const StringImm>);
+    virtual Expr visit(Ref<const Unary>);
+    virtual Expr visit(Ref<const Binary>);
+    virtual Expr visit(Ref<const Select>);
+    virtual Expr visit(Ref<const Compare>);
+    virtual Expr visit(Ref<const Call>);
+    virtual Expr visit(Ref<const Var>);
+    virtual Expr visit(Ref<const Cast>);
+    virtual Expr visit(Ref<const Ramp>);
+    virtual Expr visit(Ref<const Index>);
+    virtual Expr visit(Ref<const Dom>);
+    virtual Stmt visit(Ref<const LoopNest>);
+    virtual Stmt visit(Ref<const IfThenElse>);
+    virtual Stmt visit(Ref<const Move>);
+    virtual Group visit(Ref<const Kernel>);
+ private:
+};
+
+}  // namespace Internal
+
+}  // namespace Boost
+
+
+#endif  // BOOST_IRMUTATOR_H

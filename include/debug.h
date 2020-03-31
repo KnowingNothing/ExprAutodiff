@@ -21,3 +21,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
 */
+
+#ifndef BOOST_DEBUG_H
+#define BOOST_DEBUG_H
+
+#include <iostream>
+
+#define CHECK(cond, ...)                                \
+    {                                                   \
+        if (!(cond)) {                                    \
+            std::cerr << "Check failed: "               \
+                      << #cond << "\n";                 \
+            std::cerr << "file: "                       \
+                      << __FILE__ << "\n";              \
+            std::cerr << "line:"                        \
+                      << __LINE__ << "\n";              \
+            std::cerr << "Hint: ";                      \
+            fprintf(stderr, __VA_ARGS__);               \
+            abort();                                    \
+        }                                               \
+    }
+
+
+#endif  // BOOST_DEBUG_H

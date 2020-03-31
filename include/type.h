@@ -22,7 +22,13 @@
  * SOFTWARE.
 */
 
+#ifndef BOOST_TYPE_H
+#define BOOST_TYPE_H
+
 #include <vector>
+#include <sstream>
+
+#include "debug.h"
 
 
 namespace Boost {
@@ -46,13 +52,13 @@ class LanesList {
  public:
     LanesList() {}
 
-    LanesList(LanesList &other) : lanes_list(other.lanes_list) {}
+    LanesList(const LanesList &other) : lanes_list(other.lanes_list) {}
 
-    LanesList(LanesList &&other) : lanes_list(std::move(other.lanes_list)) {}
+    LanesList(const LanesList &&other) : lanes_list(std::move(other.lanes_list)) {}
 
-    LanesList(std::vector<uint16_t> _lanes_list) : lanes_list(_lanes_list) {};
+    LanesList(const std::vector<uint16_t> &_lanes_list) : lanes_list(_lanes_list) {};
 
-    LanesList(std::vector<uint16_t> &&_lanes_list) {
+    LanesList(const std::vector<uint16_t> &&_lanes_list) {
         lanes_list = std::move(_lanes_list);
     }
 
@@ -75,14 +81,42 @@ class LanesList {
         return lanes_list[pos];
     }
 
-    LanesList &operator=(LanesList &other) {
+    LanesList &operator=(const LanesList &other) {
         this->lanes_list = other.lanes_list;
         return *this;
     }
 
-    LanesList &operator=(LanesList &&other) {
+    LanesList &operator=(const LanesList &&other) {
         this->lanes_list = std::move(other.lanes_list);
         return *this;
+    }
+
+    bool operator==(const LanesList &other) const {
+        if (this->lanes_list.size() != other.lanes_list.size())
+            return false;
+        for (size_t i = 0; i < lanes_list.size(); ++i) {
+            if (this->lanes_list[i] != other.lanes_list[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    friend std::ostream &operator<<(std::ostream& out, const LanesList &l) {
+        out << "<";
+        for (size_t i = 0; i < l.lanes_list.size(); ++i) {
+            if (i == l.lanes_list.size() - 1) {
+                out << l.lanes_list[i];
+            } else {
+                out << l.lanes_list[i] << ", ";
+            }
+        }
+        out << ">";
+        return out;
+    }
+
+    bool operator!=(const LanesList &other) const {
+        return !((*this) == other);
     }
 };
 
@@ -102,25 +136,93 @@ class Type {
 
     Type(Type &&other) : code(other.code), bits(other.bits), lanes_list(std::move(other.lanes_list)) {}
 
-    Type &operator=(Type &other) {
+    Type(const Type &other) : code(other.code), bits(other.bits), lanes_list(other.lanes_list) {}
+
+    Type(const Type &&other) : code(other.code), bits(other.bits), lanes_list(std::move(other.lanes_list)) {}
+
+    Type &operator=(const Type &other) {
         this->code = other.code;
         this->bits = other.bits;
         this->lanes_list = other.lanes_list;
         return *this;
     }
 
-    Type &operator=(Type &&other) {
+    Type &operator=(const Type &&other) {
         this->code = other.code;
         this->bits = other.bits;
         this->lanes_list = std::move(other.lanes_list);
         return *this;
     }
 
+    bool is_int() const {
+        return this->code == TypeCode::Int;
+    }
+
+    bool is_uint() const {
+        return this->code == TypeCode::UInt;
+    }
+
+    bool is_float() const {
+        return this->code == TypeCode::Float;
+    }
+
+    bool operator==(const Type &other) const {
+        return this->code == other.code && this->bits == other.bits && this->lanes_list == other.lanes_list;
+    }
+
+    bool operator!=(const Type &other) const {
+        return !((*this) == other);
+    }
+
+    friend std::ostream &operator<<(std::ostream& out, const Type &t) {
+        out << "(";
+        if (t.code == TypeCode::Int) {
+            out << "int";
+        } else if (t.code == TypeCode::UInt) {
+            out << "uint";
+        } else if (t.code == TypeCode::Float) {
+            out << "float";
+        } else if (t.code == TypeCode::String) {
+            out << "string";
+        } else if (t.code == TypeCode::Handle) {
+            out << "handle";
+        }
+        out << t.bits << "_t ";
+        out << t.lanes_list << ")";
+        return out;
+    }
+
     size_t dim() {
         return lanes_list.size();
+    }
+
+    static Type int_scalar(int bits) {
+        CHECK(bits > 0 && bits < INT16_MAX, "bits too large: %d", bits);
+        return Type(
+            TypeCode::Int,
+            static_cast<uint16_t>(bits),
+            LanesList({static_cast<uint16_t>(1)}));
+    }
+
+    static Type uint_scalar(int bits) {
+        CHECK(bits > 0 && bits < INT16_MAX, "bits too large: %d", bits);
+        return Type(
+            TypeCode::UInt,
+            static_cast<uint16_t>(bits),
+            LanesList({static_cast<uint16_t>(1)}));
+    }
+
+    static Type float_scalar(int bits) {
+        CHECK(bits > 0 && bits < INT16_MAX, "bits too large: %d", bits);
+        return Type(
+            TypeCode::Float,
+            static_cast<uint16_t>(bits),
+            LanesList({static_cast<uint16_t>(1)}));
     }
 };
 
 }  // namespace Internal
 
 }  // namespace Boost
+
+#endif  // BOOST_TYPE_H
