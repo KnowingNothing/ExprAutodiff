@@ -53,12 +53,18 @@ class Ref {
 
     Ref(Ref<T> &&other) : ptr(std::move(other.ptr)) {}
 
+    /**
+     * allow constructing from sub-class
+     */ 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
     Ref(Ref<U> &other) : ptr(other.real_ptr()) {}
 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
     Ref(Ref<U> &&other) : ptr(std::move(other.real_ptr())) {}
 
+    /**
+     * allow constructing from shared_ptr of sub-class
+     */ 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
     Ref(std::shared_ptr<U> _ptr) : ptr(_ptr) {}
 
@@ -66,6 +72,9 @@ class Ref {
 
     T *get() const { return ptr.get(); }
 
+    /**
+     * have to expose inner shared_ptr, required by constructor
+     */ 
     void set_ptr(std::shared_ptr<T> other) {
         this->ptr = other;
     }
@@ -94,7 +103,9 @@ class Ref {
     }
 };
 
-
+/**
+ * different type of IRNodes
+ */ 
 enum class IRNodeType : short {
     // Groups
     Kernel,
@@ -120,6 +131,9 @@ enum class IRNodeType : short {
 };
 
 
+/**
+ * forward declaration
+ */
 class IRVisitor;
 class IRMutator;
 class Expr;
@@ -127,6 +141,9 @@ class Stmt;
 class Group;
 
 
+/**
+ * this is the base class of all IR nodes
+ */ 
 class IRNode {
  public:
     IRNode(const IRNodeType _type) : _node_type(_type) {}
@@ -135,13 +152,22 @@ class IRNode {
         return this->_node_type;
     }
 
+    /**
+     * for IRVisitor
+     */ 
     virtual void visit_node(IRVisitor *visitor) const = 0;
 
  private:
+    /**
+     * indicate the concrete type of this IR node
+     */ 
     IRNodeType _node_type;
 };
 
 
+/**
+ * base node of expression
+ */ 
 class ExprNode : public IRNode {
  private:
     Type type_;
@@ -158,6 +184,9 @@ class ExprNode : public IRNode {
 };
 
 
+/**
+ * base node of statement
+ */ 
 class StmtNode : public IRNode {
  private:
 
@@ -170,6 +199,9 @@ class StmtNode : public IRNode {
 };
 
 
+/**
+ * base node of group
+ */ 
 class GroupNode : public IRNode {
  private:
 
@@ -182,12 +214,18 @@ class GroupNode : public IRNode {
 };
 
 
+/**
+ * inherited from Halide
+ */ 
 class IntImm : public ExprNode, public std::enable_shared_from_this<IntImm> {
  private:
     int64_t value_;
  public:
     IntImm(Type _type, const int64_t _value) : ExprNode(_type, IRNodeType::IntImm), value_(_value)  {}
 
+    /**
+     * May need consider bits
+     */
     int64_t value() const {
         return value_;
     }
@@ -203,6 +241,9 @@ class IntImm : public ExprNode, public std::enable_shared_from_this<IntImm> {
 };
 
 
+/**
+ * inherited from Halide
+ */ 
 class UIntImm : public ExprNode, public std::enable_shared_from_this<UIntImm> {
  private:
     uint64_t value_;
@@ -227,6 +268,9 @@ class UIntImm : public ExprNode, public std::enable_shared_from_this<UIntImm> {
 };
 
 
+/**
+ * inherited from Halide
+ */ 
 class FloatImm : public ExprNode, public std::enable_shared_from_this<FloatImm> {
  private:
     double value_;
@@ -251,6 +295,9 @@ class FloatImm : public ExprNode, public std::enable_shared_from_this<FloatImm> 
 };
 
 
+/**
+ * inherited from Halide
+ */ 
 class StringImm : public ExprNode, public std::enable_shared_from_this<StringImm> {
  private:
     std::string value_;
@@ -273,6 +320,9 @@ class StringImm : public ExprNode, public std::enable_shared_from_this<StringImm
 };
 
 
+/**
+ * a reference to expression
+ */ 
 class Expr : public Ref<const ExprNode> {
  public:
     Expr() : Ref<const ExprNode>() {}
@@ -293,6 +343,9 @@ class Expr : public Ref<const ExprNode> {
                 typename std::enable_if<std::is_base_of<ExprNode, U>::value>::type* = nullptr>
     Expr(std::shared_ptr<const U> _ptr) : Ref<const ExprNode>(_ptr) {}
 
+    /**
+     * convenient constructors
+     */ 
     explicit Expr(bool value) :
         Ref<const ExprNode>(UIntImm::make(Type::uint_scalar(1), static_cast<uint64_t>(value))) {}
 
@@ -342,6 +395,9 @@ class Expr : public Ref<const ExprNode> {
         return this->get()->mutate_expr(mutator);
     }
 
+    /**
+     * cast to other type of reference
+     */ 
     template <typename T>
     std::shared_ptr<const T> as() {
         if (this->node_type() == T::node_type_) {
@@ -352,6 +408,9 @@ class Expr : public Ref<const ExprNode> {
 };
 
 
+/**
+ * a reference to statement
+ */ 
 class Stmt : public Ref<const StmtNode> {
  public:
     Stmt() : Ref<const StmtNode>() {}
@@ -388,6 +447,9 @@ class Stmt : public Ref<const StmtNode> {
         return this->get()->mutate_stmt(mutator);
     }
 
+    /**
+     * cast to other type of reference
+     */ 
     template <typename T>
     std::shared_ptr<const T> as() {
         if (this->node_type() == T::node_type_) {
@@ -398,6 +460,9 @@ class Stmt : public Ref<const StmtNode> {
 };
 
 
+/**
+ * a reference to group
+ */ 
 class Group : public Ref<const GroupNode> {
  public:
     Group() : Ref<const GroupNode>() {}
@@ -434,6 +499,9 @@ class Group : public Ref<const GroupNode> {
         return this->get()->mutate_group(mutator);
     }
 
+    /**
+     * cast to other type of reference
+     */ 
     template <typename T>
     std::shared_ptr<const T> as() {
         if (this->node_type() == T::node_type_) {
@@ -445,11 +513,14 @@ class Group : public Ref<const GroupNode> {
 
 
 enum class UnaryOpType : uint8_t {
-    Neg,
-    Not
+    Neg,    /* negate */
+    Not     /* logic not */
 };
 
 
+/**
+ * unary operation
+ */ 
 class Unary : public ExprNode, public std::enable_shared_from_this<Unary> {
  public:
     UnaryOpType op_type;
@@ -480,6 +551,9 @@ enum class BinaryOpType : uint8_t {
 };
 
 
+/**
+ * binary operation
+ */ 
 class Binary : public ExprNode, public std::enable_shared_from_this<Binary> {
  public:
     BinaryOpType op_type;
@@ -509,6 +583,9 @@ enum class CompareOpType : uint8_t {
 };
 
 
+/**
+ * compare op <, <=, =, !=, >=, >
+ */ 
 class Compare : public ExprNode, public std::enable_shared_from_this<Compare> {
  public:
     CompareOpType op_type;
@@ -528,6 +605,9 @@ class Compare : public ExprNode, public std::enable_shared_from_this<Compare> {
 };
 
 
+/**
+ * select op: cond? true_value : false_value
+ */ 
 class Select : public ExprNode, public std::enable_shared_from_this<Select> {
  public:
     Expr cond;
@@ -553,6 +633,9 @@ enum class CallType : uint8_t {
 };
 
 
+/**
+ * call op, used for function call
+ */ 
 class Call : public ExprNode, public std::enable_shared_from_this<Call> {
  public:
     std::vector<Expr> args;
@@ -573,6 +656,9 @@ class Call : public ExprNode, public std::enable_shared_from_this<Call> {
 };
 
 
+/**
+ * cast op, used for type cast
+ */ 
 class Cast : public ExprNode, public std::enable_shared_from_this<Cast> {
  public:
     Type new_type;
@@ -592,6 +678,10 @@ class Cast : public ExprNode, public std::enable_shared_from_this<Cast> {
 };
 
 
+/**
+ * ramp, used for vectorization
+ * - broadcast: when stride is 0
+ */ 
 class Ramp : public ExprNode, public std::enable_shared_from_this<Ramp> {
  public:
     Expr base;
@@ -612,10 +702,20 @@ class Ramp : public ExprNode, public std::enable_shared_from_this<Ramp> {
 };
 
 
+/**
+ * TODO: do we need shuffle?
+ */ 
+
+
+/**
+ * variable index expression, such as A[i, j]
+ * - scalar: when shape is {1}
+ */ 
 class Var : public ExprNode, public std::enable_shared_from_this<Var> {
  public:
     std::string name;
     std::vector<Expr> args;
+    // TODO: this may need to be removed to other class
     std::vector<size_t> shape;
 
     Var(Type _type, const std::string &_name, const std::vector<Expr> &_args,
@@ -634,6 +734,9 @@ class Var : public ExprNode, public std::enable_shared_from_this<Var> {
 };
 
 
+/**
+ * iteration domain, for now it's a simple [begin, begin+extent)
+ */ 
 class Dom : public ExprNode, public std::enable_shared_from_this<Dom> {
  public:
     Expr begin;
@@ -662,6 +765,9 @@ enum class IndexType : uint8_t {
 };
 
 
+/**
+ * iteration index
+ */ 
 class Index : public ExprNode, public std::enable_shared_from_this<Index> {
  public:
     std::string name;
@@ -682,6 +788,10 @@ class Index : public ExprNode, public std::enable_shared_from_this<Index> {
 };
 
 
+/**
+ * loop nest
+ * - block: if index_list is empty, it means a block of statements
+ */ 
 class LoopNest : public StmtNode, public std::enable_shared_from_this<LoopNest> {
  public:
     std::vector<Expr> index_list;
@@ -701,6 +811,9 @@ class LoopNest : public StmtNode, public std::enable_shared_from_this<LoopNest> 
 };
 
 
+/**
+ * branch statement
+ */ 
 class IfThenElse : public StmtNode, public std::enable_shared_from_this<IfThenElse> {
  public:
     Expr cond;
@@ -736,10 +849,15 @@ enum class MoveType : uint8_t {
 };
 
 
+/**
+ * assign statement: load and store are put together
+ * - evaluate: when dst is nullptr
+ */ 
 class Move : public StmtNode, public std::enable_shared_from_this<Move> {
  public:
     Expr dst;
     Expr src;
+    // TODO: is this necessary?
     MoveType move_type;
 
     Move(Expr _dst, Expr _src, MoveType _move_type) :

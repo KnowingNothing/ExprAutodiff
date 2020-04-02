@@ -79,3 +79,4 @@ if (HIDE_PRIVATE_SYMBOLS AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 add_subdirectory(test)
+add_subdirectory(project1)
