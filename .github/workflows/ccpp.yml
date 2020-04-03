@@ -13,11 +13,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: build
-      run: mkdir build && cd build
     - name: cmake
-      run: pwd && cmake --version && cmake ..
+      run: mkdir build && cd build && cmake --version && cmake ..
     - name: make
-      run: make -j 4
+      run: cd build && make -j 4
     - name: test
-      run: cd test && ./gemm && ./conv2d
+      run: cd build/test && ./gemm && ./conv2d
