@@ -16,7 +16,7 @@ jobs:
     - name: build
       run: mkdir build && cd build
     - name: cmake
-      run: cmake --version && cmake ..
+      run: pwd && cmake --version && cmake ..
     - name: make
       run: make -j 4
     - name: test
