@@ -127,7 +127,10 @@ enum class IRNodeType : short {
     UIntImm,
     FloatImm,
     StringImm,
-    Dom
+    Dom,
+    // Operations
+    ComputeOp,
+    PlaceholderOp
 };
 
 
@@ -139,6 +142,7 @@ class IRMutator;
 class Expr;
 class Stmt;
 class Group;
+class Operation;
 
 
 /**
@@ -904,6 +908,146 @@ class Kernel : public GroupNode, public std::enable_shared_from_this<Kernel> {
     static const IRNodeType node_type_ = IRNodeType::Kernel;
 };
 
+class OperationNode : public IRNode {
+ private:
+
+ public:
+    OperationNode(const IRNodeType node_type) : IRNode(node_type){} 
+
+    virtual ~OperationNode() = default;
+
+    virtual Operation mutate_operation(IRMutator *mutator) const = 0;
+
+    virtual std::vector<Expr> output_expr() const = 0;
+
+    virtual Stmt operation_stmt() const = 0;
+};
+
+class Operation : public Ref<const OperationNode> {
+ public:
+    Operation() : Ref<const OperationNode>() {}
+
+    Operation(const Operation &other) : Ref<const OperationNode>(other.real_ptr()) {}
+
+    Operation(const Operation &&other) : Ref<const OperationNode>(other.real_ptr()) {}
+
+    template<typename U, typename std::enable_if<std::is_base_of<OperationNode, U>::value>::type* = nullptr>
+    Operation(Ref<const U> &other) : Ref<const OperationNode>(other) {}
+
+    template<typename U, typename std::enable_if<std::is_base_of<OperationNode, U>::value>::type* = nullptr>
+    Operation(Ref<const U> &&other) : Ref<const OperationNode>(std::move(other)) {}
+
+    template<typename U, typename std::enable_if<std::is_base_of<OperationNode, U>::value>::type* = nullptr>
+    Operation(std::shared_ptr<const U> _ptr) : Ref<const OperationNode>(_ptr) {}
+
+    Operation(std::shared_ptr<const OperationNode> _ptr) : Ref<const OperationNode>(_ptr) {}
+
+    Operation &operator=(const Operation &other) {
+        this->set_ptr(other.real_ptr());
+        return *this;
+    }
+    
+    std::vector<Expr> output_expr() const {
+        return this->get()->output_expr();
+    }
+
+    Stmt operation_stmt() const{
+        return this->get()->operation_stmt();
+    }
+
+    IRNodeType node_type() const {
+        return this->get()->node_type();
+    }
+
+    void visit_operation(IRVisitor *visitor) const {
+        return this->get()->visit_node(visitor);
+    }
+
+    Operation mutate_operation(IRMutator *mutator) const {
+        return this->get()->mutate_operation(mutator);
+    }
+
+    /**
+     * cast to other type of reference
+     */ 
+    template <typename T>
+    std::shared_ptr<const T> as() {
+        if (this->node_type() == T::node_type_) {
+            return std::static_pointer_cast<T>(this->real_ptr());
+        }
+        return nullptr;
+    }
+};
+
+class PlaceholderOp : public OperationNode, public std::enable_shared_from_this<PlaceholderOp> {
+ public:
+    std::string name_;
+    std::vector<Expr> args;
+    std::vector<size_t> shape;
+    Type type_;
+    Expr output_expr_;
+
+    PlaceholderOp(Type _type, const std::string &_name, const std::vector<Expr> &_args,
+        const std::vector<size_t> &_shape) : OperationNode(IRNodeType::PlaceholderOp),
+        name_(_name), args(_args), shape(_shape), type_(_type),
+        output_expr_(Var::make(_type, _name, _args, _shape)) {}
+
+    Operation mutate_operation(IRMutator *mutator) const;
+    void visit_node(IRVisitor *visitor) const;
+
+    std::vector<Expr> output_expr() const {
+        std::vector<Expr> ret;
+        ret.push_back(output_expr_);
+        return ret;
+    }
+
+    Stmt operation_stmt() const {
+        return Stmt();
+    }
+
+    static Operation make(Type t, const std::string &_name, const std::vector<Expr> &_args,
+        const std::vector<size_t> &_shape) {
+        return std::make_shared<const PlaceholderOp>(t, _name, _args, _shape);
+    }
+
+    static const IRNodeType node_type_ = IRNodeType::PlaceholderOp;
+};
+
+class ComputeOp : public OperationNode, public std::enable_shared_from_this<ComputeOp> {
+ public:
+    std::vector<Expr> index_list;
+    std::vector<Stmt> body_list;
+    Stmt loop_nest_;
+
+    ComputeOp(const std::vector<Expr> &_index_list, const std::vector<Stmt> &_body_list) :
+        OperationNode(IRNodeType::ComputeOp), index_list(_index_list), body_list(_body_list),
+        loop_nest_(LoopNest::make(_index_list, _body_list)) {}
+
+    Operation mutate_operation(IRMutator *mutator) const;
+    void visit_node(IRVisitor *visitor) const;
+
+    std::vector<Expr> output_expr() const {
+        std::vector<Expr> ret;
+        for(unsigned int i = 0; i < body_list.size(); ++i){
+            if(body_list[i].node_type() == IRNodeType::Move){
+                Stmt bi = body_list[i];
+                Move tmp = *(bi.as<const Move>());
+                ret.push_back(tmp.dst);
+            }
+        }
+        return ret;
+    }
+
+    Stmt operation_stmt() const{
+        return loop_nest_;
+    }
+
+    static Operation make(const std::vector<Expr> &_index_list, const std::vector<Stmt> &_body_list) {
+        return std::make_shared<const ComputeOp>(_index_list, _body_list);
+    }
+
+    static const IRNodeType node_type_ = IRNodeType::ComputeOp;
+};
 
 }  // namespace Internal
 

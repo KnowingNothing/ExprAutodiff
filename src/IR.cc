@@ -119,6 +119,14 @@ Group Kernel::mutate_group(IRMutator *mutator) const {
     return mutator->visit(Ref<const Kernel>(shared_from_this()));
 }
 
+Operation PlaceholderOp::mutate_operation(IRMutator *mutator) const {
+    return mutator->visit(Ref<const PlaceholderOp>(shared_from_this()));
+}
+
+Operation ComputeOp::mutate_operation(IRMutator *mutator) const {
+    return mutator->visit(Ref<const ComputeOp>(shared_from_this()));
+}
+
 /**
  * IRVisitor
  */ 
@@ -212,6 +220,13 @@ void Kernel::visit_node(IRVisitor *visitor) const {
     return visitor->visit(Ref<const Kernel>(shared_from_this()));
 }
 
+void PlaceholderOp::visit_node(IRVisitor *visitor) const {
+    return visitor->visit(Ref<const PlaceholderOp>(shared_from_this()));
+}
+
+void ComputeOp::visit_node(IRVisitor *visitor) const {
+    return visitor->visit(Ref<const ComputeOp>(shared_from_this()));
+}
 
 }  // namespace Internal
 
