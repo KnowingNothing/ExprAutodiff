@@ -405,7 +405,7 @@ class Expr : public Ref<const ExprNode> {
     template <typename T>
     std::shared_ptr<const T> as() {
         if (this->node_type() == T::node_type_) {
-            return std::static_pointer_cast<T>(this->get());
+            return std::static_pointer_cast<T>(this->real_ptr());
         }
         return nullptr;
     }
@@ -457,7 +457,7 @@ class Stmt : public Ref<const StmtNode> {
     template <typename T>
     std::shared_ptr<const T> as() {
         if (this->node_type() == T::node_type_) {
-            return std::static_pointer_cast<T>(this->get());
+            return std::static_pointer_cast<T>(this->real_ptr());
         }
         return nullptr;
     }
@@ -509,7 +509,7 @@ class Group : public Ref<const GroupNode> {
     template <typename T>
     std::shared_ptr<const T> as() {
         if (this->node_type() == T::node_type_) {
-            return std::static_pointer_cast<T>(this->get());
+            return std::static_pointer_cast<T>(this->real_ptr());
         }
         return nullptr;
     }
