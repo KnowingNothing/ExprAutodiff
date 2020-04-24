@@ -151,6 +151,20 @@ void IRVisitor::visit(Ref<const Kernel> op) {
     return;
 }
 
+void IRVisitor::visit(Ref<const PlaceholderOp> op){
+    for (auto arg : op->args) {
+        arg.visit_expr(this);
+    }
+}
+
+void IRVisitor::visit(Ref<const ComputeOp> op){
+    for (auto index : op->index_list) {
+        index.visit_expr(this);
+    }
+    for (auto body : op->body_list) {
+        body.visit_stmt(this);
+    }
+}
 
 
 }  // namespace Internal

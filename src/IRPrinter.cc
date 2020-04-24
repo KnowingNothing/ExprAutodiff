@@ -309,6 +309,23 @@ void IRPrinter::visit(Ref<const Kernel> op) {
     oss << "}\n";
 }
 
+void IRPrinter::visit(Ref<const PlaceholderOp> op){
+    print_indent();
+    oss << "placeholder {\n";
+    enter();
+    (op->output_expr_).visit_expr(this);
+    exit();
+    oss << "}\n";
+}
+
+void IRPrinter::visit(Ref<const ComputeOp> op){
+    print_indent();
+    oss << "compute { \n";
+    enter();
+    (op->loop_nest_).visit_stmt(this);
+    exit();
+    oss << "}\n";
+}
 
 }  // namespace Internal
 

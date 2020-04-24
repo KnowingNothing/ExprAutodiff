@@ -76,6 +76,8 @@ class IRPrinter : public IRVisitor {
     void visit(Ref<const IfThenElse>) override;
     void visit(Ref<const Move>) override;
     void visit(Ref<const Kernel>) override;
+    void visit(Ref<const PlaceholderOp>) override;
+    void visit(Ref<const ComputeOp>) override;
  private:
     std::ostringstream oss;
     int indent;

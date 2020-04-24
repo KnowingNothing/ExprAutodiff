@@ -171,6 +171,25 @@ Group IRMutator::visit(Ref<const Kernel> op) {
     return Kernel::make(op->name, op->inputs, op->outputs, new_stmt_list, op->kernel_type);
 }
 
+Operation IRMutator::visit(Ref<const PlaceholderOp> op){
+    std::vector<Expr> new_args;
+    for (auto arg : op->args) {
+        new_args.push_back(mutate(arg));
+    }
+    return PlaceholderOp::make(op->type_, op->name_, new_args, op->shape);
+}
+
+Operation IRMutator::visit(Ref<const ComputeOp> op){
+    std::vector<Expr> new_index_list;
+    std::vector<Stmt> new_body_list;
+    for (auto index : op->index_list) {
+        new_index_list.push_back(mutate(index));
+    }
+    for (auto body : op->body_list) {
+        new_body_list.push_back(mutate(body));
+    }
+    return ComputeOp::make(new_index_list, new_body_list);
+}
 
 }  // namespace Internal
 
