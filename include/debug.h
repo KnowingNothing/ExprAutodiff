@@ -26,10 +26,13 @@
 #define BOOST_DEBUG_H
 
 #include <iostream>
+#include <sstream>
+#include <chrono>
+
 
 #define CHECK(cond, ...)                                \
     {                                                   \
-        if (!(cond)) {                                    \
+        if (!(cond)) {                                  \
             std::cerr << "Check failed: "               \
                       << #cond << "\n";                 \
             std::cerr << "file: "                       \
@@ -41,6 +44,80 @@
             abort();                                    \
         }                                               \
     }
+
+#define ABORT(msg) {fprintf(stderr, __VA_ARGS__); abort(); }
+
+
+enum class LogLevel {
+    INFO,
+    WARNING,
+    ERROR
+};
+
+class LazyLogging {
+ private:
+    LogLevel log_level;
+    std::ostringstream oss;
+ public:
+    LazyLogging(LogLevel level) : log_level(level) {}
+    ~LazyLogging() {
+        std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(
+            std::chrono::system_clock::now().time_since_epoch()
+        );
+
+        switch (log_level)
+        {
+        case LogLevel::INFO:
+            std::cerr << "[Info] " << "[time=" << ms.count() << "] ";
+            break;
+        case LogLevel::WARNING:
+            std::cerr << "[Warning] " << "[time=" << ms.count() << "] ";
+            break;
+        case LogLevel::ERROR:
+            std::cerr << "[Error] " << "[time=" << ms.count() << "] ";
+            break;
+        default:
+            break;
+        }
+        std::cerr << oss.str() << "\n";
+    }
+
+    template<typename T>
+    LazyLogging &operator<<(T &other) {
+        oss << other;
+        return *this;
+    }
+};
+
+
+#define LOG(T) LazyLogging(LogLevel::T)
+
+/*
+The following code is copied from Halide
+We may change it later
+*/
+class debug {
+ private:
+    bool do_print = false;
+ public:
+    debug(int level) : do_print(level <= debug_level()) {}
+
+    template<typename T>
+    debug &operator<<(T &other) {
+        if (do_print) {
+            std::cerr << other;
+        }
+        return *this;
+    }
+
+    static int debug_level() {
+        static int cached_debug_level = ([]() -> int {
+            std::string lvl = getenv("DB_DEBUG_CODEGEN");
+            return !lvl.empty() ? atoi(lvl.c_str()) : 0;
+        })();
+        return cached_debug_level;
+    }
+};
 
 
 #endif  // BOOST_DEBUG_H

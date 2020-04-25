@@ -22,26 +22,29 @@
  * SOFTWARE.
 */
 
-#ifndef BOOST_IRPRINTER_H
-#define BOOST_IRPRINTER_H
+#ifndef BOOST_CODEGEN_C_H
+#define BOOST_CODEGEN_C_H
 
 #include <string>
 #include <sstream>
 
 #include "IRVisitor.h"
 
+using namespace Boost::Internal;
+
 
 namespace Boost {
 
-namespace Internal {
+namespace codegen {
 
-class IRPrinter : public IRVisitor {
+class CodeGen_C : public Internal::IRVisitor {
  public:
-    IRPrinter() : IRVisitor() {
+    CodeGen_C() : IRVisitor() {
         indent = 0;
         print_range = false;
         print_arg = false;
     }
+    std::string print_type(const Type &t);
     std::string print(const Expr&);
     std::string print(const Stmt&);
     std::string print(const Group&);
@@ -86,9 +89,9 @@ class IRPrinter : public IRVisitor {
     bool print_arg;
 };
 
-}  // namespace Internal
+}  // namespace codegen
 
 }  // namespace Boost
 
 
-#endif  // BOOST_IRPRINTER_H
+#endif  // BOOST_CODEGEN_C_H

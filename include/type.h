@@ -73,11 +73,11 @@ class LanesList {
         return ret;
     }
 
-    size_t size() {
+    size_t size() const {
         return lanes_list.size();
     }
 
-    uint16_t &operator[](size_t pos) {
+    const uint16_t &operator[](size_t pos) const {
         return lanes_list[pos];
     }
 
@@ -152,6 +152,10 @@ class Type {
         this->bits = other.bits;
         this->lanes_list = std::move(other.lanes_list);
         return *this;
+    }
+
+    bool is_scalar() const {
+        return ((int)lanes_list.size() == 1) && ((int)lanes_list[0] == 1);
     }
 
     bool is_int() const {

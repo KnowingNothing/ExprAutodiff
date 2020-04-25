@@ -4,7 +4,7 @@
 #include "IR.h"
 #include "IRMutator.h"
 #include "IRVisitor.h"
-#include "IRPrinter.h"
+#include "codegen_C.h"
 #include "type.h"
 
 using namespace Boost::Internal;
@@ -28,11 +28,11 @@ int main() {
     Expr dom_k = Dom::make(index_type, 0, K);
     Expr k = Index::make(index_type, "k", dom_k, IndexType::Reduce);
 
-    // placeholder_A
-    Operation placeholder_A = PlaceholderOp::make(data_type, "A", {i, k}, {M, K});
+    // A
+    Expr expr_A = Var::make(data_type, "A", {i, k}, {M, K});
 
-    // placeholder_B
-    Operation placeholder_B = PlaceholderOp::make(data_type, "B", {k, j}, {K, N});
+    // B
+    Expr expr_B = Var::make(data_type, "B", {k, j}, {K, N});
 
     // C
     Expr expr_C = Var::make(data_type, "C", {i, j}, {M, N});
@@ -41,15 +41,15 @@ int main() {
     Stmt main_stmt = Move::make(
         expr_C,
         Binary::make(data_type, BinaryOpType::Add, expr_C,
-            Binary::make(data_type, BinaryOpType::Mul, placeholder_A.output_expr()[0], 
-                placeholder_B.output_expr()[0])), MoveType::MemToMem
+            Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_B)),
+        MoveType::MemToMem
     );
 
-    // compute
-    Operation compute = ComputeOp::make({i, j, k}, {main_stmt});
+    // loop nest
+    Stmt loop_nest = LoopNest::make({i, j, k}, {main_stmt});
 
     // kernel
-    Group kernel = Kernel::make("simple_gemm", {placeholder_A.output_expr()[0], placeholder_B.output_expr()[0]}, {expr_C}, {compute.operation_stmt()}, KernelType::CPU);
+    Group kernel = Kernel::make("simple_gemm", {expr_A, expr_B}, {expr_C}, {loop_nest}, KernelType::CPU);
 
     // visitor
     IRVisitor visitor;
@@ -59,9 +59,9 @@ int main() {
     IRMutator mutator;
     kernel = mutator.mutate(kernel);
 
-    // printer
-    IRPrinter printer;
-    std::string code = printer.print(kernel);
+    // generator
+    Boost::codegen::CodeGen_C generator;
+    std::string code = generator.print(kernel);
 
     std::cout << code;
 
