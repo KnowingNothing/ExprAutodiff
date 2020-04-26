@@ -46,7 +46,7 @@
     }
 
 
-#define ABORT(msg) {fprintf(stderr, __VA_ARGS__); abort(); }
+#define ABORT(msg) {fprintf(stderr, msg); abort(); }
 
 
 enum class LogLevel {
