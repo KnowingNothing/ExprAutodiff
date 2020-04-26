@@ -79,8 +79,8 @@ int main() {
     // functor
     // IRFunctor<void(int)> visitor;
     // kernel.visit_(&visitor);
-    MyVisitor myvisitor;
-    kernel.visit_(myvisitor);
+    // MyVisitor myvisitor;
+    // kernel.visit_(myvisitor);
 
     std::cout << "Success!\n";
     return 0;
