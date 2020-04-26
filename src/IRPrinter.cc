@@ -30,6 +30,7 @@ namespace Internal {
 
 
 std::string IRPrinter::print(const Expr &expr) {
+    oss.str("");
     oss.clear();
     expr.visit_expr(this);
     return oss.str();
@@ -37,6 +38,7 @@ std::string IRPrinter::print(const Expr &expr) {
 
 
 std::string IRPrinter::print(const Stmt &stmt) {
+    oss.str("");
     oss.clear();
     stmt.visit_stmt(this);
     return oss.str();
@@ -44,6 +46,7 @@ std::string IRPrinter::print(const Stmt &stmt) {
 
 
 std::string IRPrinter::print(const Group &group) {
+    oss.str("");
     oss.clear();
     group.visit_group(this);
     return oss.str();
@@ -91,6 +94,10 @@ void IRPrinter::visit(Ref<const Binary> op) {
     } else if (op->op_type == BinaryOpType::Div) {
         oss << " / ";
     } else if (op->op_type == BinaryOpType::Mod) {
+        oss << " % ";
+    } else if (op->op_type == BinaryOpType::FloorDiv) {
+        oss << " // ";
+    } else if (op->op_type == BinaryOpType::FloorMod) {
         oss << " % ";
     } else if (op->op_type == BinaryOpType::And) {
         oss << " && ";

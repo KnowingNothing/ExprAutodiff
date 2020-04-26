@@ -24,6 +24,7 @@
 
 #include <sstream>
 
+#include "debug.h"
 #include "codegen_C.h"
 
 namespace Boost {
@@ -69,12 +70,14 @@ std::string CodeGen_C::print_type(const Type &t) {
 
 
 std::string CodeGen_C::print(const Expr &expr) {
+  oss.str("");
   oss.clear();
   expr.visit_expr(this);
   return oss.str();
 }
 
 std::string CodeGen_C::print(const Stmt &stmt) {
+  oss.str("");
   oss.clear();
   stmt.visit_stmt(this);
   return oss.str();
@@ -82,6 +85,7 @@ std::string CodeGen_C::print(const Stmt &stmt) {
 
 
 std::string CodeGen_C::print(const Group &group) {
+  oss.str("");
   oss.clear();
   group.visit_group(this);
   return oss.str();
@@ -130,10 +134,16 @@ void CodeGen_C::visit(Ref<const Binary> op) {
       oss << " / ";
   } else if (op->op_type == BinaryOpType::Mod) {
       oss << " % ";
+  } else if (op->op_type == BinaryOpType::FloorDiv) {
+      oss << " / ";
+  } else if (op->op_type == BinaryOpType::FloorMod) {
+      oss << " % ";
   } else if (op->op_type == BinaryOpType::And) {
       oss << " && ";
   } else if (op->op_type == BinaryOpType::Or) {
       oss << " || ";
+  } else {
+    LOG(ERROR) << "Unknown binay OpType.";
   }
   (op->b).visit_expr(this);
 }

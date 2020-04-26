@@ -45,6 +45,7 @@
         }                                               \
     }
 
+
 #define ABORT(msg) {fprintf(stderr, __VA_ARGS__); abort(); }
 
 
@@ -57,9 +58,12 @@ enum class LogLevel {
 class LazyLogging {
  private:
     LogLevel log_level;
+    bool do_print;
     std::ostringstream oss;
  public:
-    LazyLogging(LogLevel level) : log_level(level) {}
+    LazyLogging() = default;
+    LazyLogging(const LazyLogging &&other) : log_level(other.log_level), do_print(other.do_print) {}
+    LazyLogging(LogLevel level, bool do_print=true) : log_level(level), do_print(do_print) {}
     ~LazyLogging() {
         std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(
             std::chrono::system_clock::now().time_since_epoch()
@@ -79,7 +83,8 @@ class LazyLogging {
         default:
             break;
         }
-        std::cerr << oss.str() << "\n";
+        if (do_print && oss.str().size() != 0)
+            std::cerr << oss.str() << "\n";
     }
 
     template<typename T>
@@ -87,10 +92,28 @@ class LazyLogging {
         oss << other;
         return *this;
     }
+
+    template<typename T>
+    LazyLogging &operator<<(T &&other) {
+        oss << other;
+        return *this;
+    }
 };
 
 
 #define LOG(T) LazyLogging(LogLevel::T)
+
+
+#define ASSERT(cond)                                        \
+    (                                                       \
+        [=]()-> LazyLogging {                                \
+            if (!(cond)) {                                  \
+                return LazyLogging(LogLevel::ERROR);        \
+            } else {                                        \
+                return LazyLogging(LogLevel::INFO, false);  \
+            }                                               \
+        }()                                                 \
+    )                                                       \
 
 /*
 The following code is copied from Halide

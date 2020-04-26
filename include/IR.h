@@ -101,6 +101,10 @@ class Ref {
         /* Don't directly compare shared_ptr, for C++20 removes operator< */
         return this->get() < b.get();
     }
+
+    bool operator==(Ref<T> &b) const {
+        return this->get() == b.get();
+    }
 };
 
 /**
@@ -385,6 +389,16 @@ class Expr : public Ref<const ExprNode> {
     Expr(double value) :
         Ref<const ExprNode>(FloatImm::make(Type::float_scalar(64), value)) {}
 
+    Expr &operator=(const Expr &other) {
+        this->set_ptr(other.real_ptr());
+        return *this;
+    }
+
+    Expr &operator=(const Expr &&other) {
+        this->set_ptr(other.real_ptr());
+        return *this;
+    }
+
     IRNodeType node_type() const {
         return this->get()->node_type();
     }
@@ -441,6 +455,11 @@ class Stmt : public Ref<const StmtNode> {
         return *this;
     }
 
+    Stmt &operator=(const Stmt &&other) {
+        this->set_ptr(other.real_ptr());
+        return *this;
+    }
+
     IRNodeType node_type() const {
         return this->get()->node_type();
     }
@@ -489,6 +508,11 @@ class Group : public Ref<const GroupNode> {
     Group(std::shared_ptr<const GroupNode> _ptr) : Ref<const GroupNode>(_ptr) {}
 
     Group &operator=(const Group &other) {
+        this->set_ptr(other.real_ptr());
+        return *this;
+    }
+
+    Group &operator=(const Group &&other) {
         this->set_ptr(other.real_ptr());
         return *this;
     }
@@ -552,6 +576,8 @@ enum class BinaryOpType : uint8_t {
     Mul,
     Div,
     Mod,
+    FloorDiv,
+    FloorMod,
     And,
     Or,
 };
@@ -722,17 +748,17 @@ class Var : public ExprNode, public std::enable_shared_from_this<Var> {
     std::string name;
     std::vector<Expr> args;
     // TODO: this may need to be removed to other class
-    std::vector<size_t> shape;
+    std::vector<uint64_t> shape;
 
     Var(Type _type, const std::string &_name, const std::vector<Expr> &_args,
-        const std::vector<size_t> &_shape) : ExprNode(_type, IRNodeType::Var),
+        const std::vector<uint64_t> &_shape) : ExprNode(_type, IRNodeType::Var),
         name(_name), args(_args), shape(_shape) {}
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
 
     static Expr make(Type t, const std::string &_name, const std::vector<Expr> &_args,
-        const std::vector<size_t> &_shape) {
+        const std::vector<uint64_t> &_shape) {
         return std::make_shared<const Var>(t, _name, _args, _shape);
     }
 
@@ -872,7 +898,7 @@ class Move : public StmtNode, public std::enable_shared_from_this<Move> {
     Stmt mutate_stmt(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
     
-    static Stmt make(Expr _dst, Expr _src, MoveType _move_type) {
+    static Stmt make(Expr _dst, Expr _src, MoveType _move_type=MoveType::MemToMem) {
         return std::make_shared<const Move>(_dst, _src, _move_type);
     }
 
@@ -948,6 +974,11 @@ class Operation : public Ref<const OperationNode> {
         this->set_ptr(other.real_ptr());
         return *this;
     }
+
+    Operation &operator=(const Operation &&other) {
+        this->set_ptr(other.real_ptr());
+        return *this;
+    }
     
     std::vector<Expr> output_expr() const {
         return this->get()->output_expr();
@@ -985,12 +1016,12 @@ class PlaceholderOp : public OperationNode, public std::enable_shared_from_this<
  public:
     std::string name_;
     std::vector<Expr> args;
-    std::vector<size_t> shape;
+    std::vector<uint64_t> shape;
     Type type_;
     Expr output_expr_;
 
     PlaceholderOp(Type _type, const std::string &_name, const std::vector<Expr> &_args,
-        const std::vector<size_t> &_shape) : OperationNode(IRNodeType::PlaceholderOp),
+        const std::vector<uint64_t> &_shape) : OperationNode(IRNodeType::PlaceholderOp),
         name_(_name), args(_args), shape(_shape), type_(_type),
         output_expr_(Var::make(_type, _name, _args, _shape)) {}
 
@@ -1008,7 +1039,7 @@ class PlaceholderOp : public OperationNode, public std::enable_shared_from_this<
     }
 
     static Operation make(Type t, const std::string &_name, const std::vector<Expr> &_args,
-        const std::vector<size_t> &_shape) {
+        const std::vector<uint64_t> &_shape) {
         return std::make_shared<const PlaceholderOp>(t, _name, _args, _shape);
     }
 
