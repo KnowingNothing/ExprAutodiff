@@ -22,6 +22,8 @@
  * SOFTWARE.
 */
 
+#include <functional>
+
 #include "debug.h"
 #include "arith.h"
 
