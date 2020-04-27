@@ -25,7 +25,11 @@
 #ifndef BOOST_IRFUNCTOR_H
 #define BOOST_IRFUNCTOR_H
 
+#include "debug.h"
 #include "IR.h"
+
+
+#define VISIT_DEFAULT {LOG(ERROR) << "Trap into default visit of " << FUNCTOR << "."; throw; }
 
 
 namespace Boost {
@@ -33,32 +37,112 @@ namespace Boost {
 namespace Internal {
 
 template <typename FType>
-class IRFunctor;
+class ExprFunctor;
+
+
+template <typename FType>
+class StmtFunctor;
+
+
+template <typename FType>
+class GroupFunctor;
+
+
+template <typename FType>
+class OperationFunctor;
 
 
 template <typename R, typename... Args>
-class IRFunctor<R(Args...)> {
+class ExprFunctor<R(const Expr&, Args...)> {
  public:
-    virtual R visit(Ref<const IntImm>, Args... args);
-    virtual R visit(Ref<const UIntImm>, Args... args);
-    virtual R visit(Ref<const FloatImm>, Args... args);
-    virtual R visit(Ref<const StringImm>, Args... args);
-    virtual R visit(Ref<const Unary>, Args... args);
-    virtual R visit(Ref<const Binary>, Args... args);
-    virtual R visit(Ref<const Select>, Args... args);
-    virtual R visit(Ref<const Compare>, Args... args);
-    virtual R visit(Ref<const Call>, Args... args);
-    virtual R visit(Ref<const Var>, Args... args);
-    virtual R visit(Ref<const Cast>, Args... args);
-    virtual R visit(Ref<const Ramp>, Args... args);
-    virtual R visit(Ref<const Index>, Args... args);
-    virtual R visit(Ref<const Dom>, Args... args);
-    virtual R visit(Ref<const LoopNest>, Args... args);
-    virtual R visit(Ref<const IfThenElse>, Args... args);
-    virtual R visit(Ref<const Move>, Args... args);
-    virtual R visit(Ref<const Kernel>, Args... args);
-    virtual R visit(Ref<const PlaceholderOp>, Args... args);
-    virtual R visit(Ref<const ComputeOp>, Args... args);
+  #define FUNCTOR "ExprFunctor"
+  virtual R visit_expr(const Expr &expr, Args... args) {
+    #define X(T)                                                  \
+      if (expr.node_type() == T::node_type_) {                    \
+        return visit(expr.as<T>(), std::forward<Args>(args)...);  \
+      }
+      IRNODE_EXPR_TYPE
+    #undef X
+    VISIT_DEFAULT
+   }
+   
+   virtual R visit(Ref<const IntImm> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const UIntImm> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const FloatImm> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const StringImm> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Unary> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Binary> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Select> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Compare> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Call> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Var> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Cast> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Ramp> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Index> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Dom> op, Args... args) VISIT_DEFAULT
+  #undef FUNCTOR
+ private:
+};
+
+template <typename R, typename... Args>
+class StmtFunctor<R(const Stmt&, Args...)> {
+ public:
+  #define FUNCTOR "StmtFunctor"
+   virtual R visit_stmt(const Stmt& stmt, Args... args) {
+     #define X(T)                                                  \
+      if (stmt.node_type() == T::node_type_) {                    \
+        return visit(stmt.as<T>(), std::forward<Args>(args)...);  \
+      }
+      IRNODE_STMT_TYPE
+    #undef X
+    VISIT_DEFAULT
+   }
+   
+   virtual R visit(Ref<const LoopNest> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const IfThenElse> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const Move> op, Args... args) VISIT_DEFAULT
+  #undef FUNCTOR
+ private:
+};
+
+
+template <typename R, typename... Args>
+class GroupFunctor<R(const Group&, Args...)> {
+ public:
+  #define FUNCTOR "GroupFunctor"
+   virtual R visit_group(const Group& group, Args... args) {
+     #define X(T)                                                  \
+      if (group.node_type() == T::node_type_) {                    \
+        return visit(group.as<T>(), std::forward<Args>(args)...);  \
+      }
+      IRNODE_GROUP_TYPE
+    #undef X
+    VISIT_DEFAULT
+   }
+   
+   virtual R visit(Ref<const Kernel> op, Args... args) VISIT_DEFAULT
+  #undef FUNCTOR
+ private:
+};
+
+
+template <typename R, typename... Args>
+class OperationFunctor<R(const Operation&, Args...)> {
+ public:
+  #define FUNCTOR "OperationFunctor"
+   virtual R visit_operation(const Operation& operation, Args... args) {
+     #define X(T)                                                  \
+      if (operation.node_type() == T::node_type_) {                    \
+        return visit(operation.as<T>(), std::forward<Args>(args)...);  \
+      }
+      IRNODE_OPERATION_TYPE
+    #undef X
+    VISIT_DEFAULT
+   }
+   
+   virtual R visit(Ref<const PlaceholderOp> op, Args... args) VISIT_DEFAULT
+   virtual R visit(Ref<const ComputeOp> op, Args... args) VISIT_DEFAULT
+  #undef FUNCTOR
  private:
 };
 

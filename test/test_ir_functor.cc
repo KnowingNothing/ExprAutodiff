@@ -10,28 +10,40 @@
 using namespace Boost::Internal;
 
 
-class MyVisitor : public IRFunctor<void(int)> {
+class ExprVisitor : public ExprFunctor<int(const Expr&)> {
  public:
-   void visit(Ref<const IntImm>, int a) override {}
-   void visit(Ref<const UIntImm>, int a) override {}
-   void visit(Ref<const FloatImm>, int a) override {}
-   void visit(Ref<const StringImm>, int a) override {}
-   void visit(Ref<const Unary>, int a) override {}
-   void visit(Ref<const Binary>, int a) override {}
-   void visit(Ref<const Select>, int a) override {}
-   void visit(Ref<const Compare>, int a) override {}
-   void visit(Ref<const Call>, int a) override {}
-   void visit(Ref<const Var>, int a) override {}
-   void visit(Ref<const Cast>, int a) override {}
-   void visit(Ref<const Ramp>, int a) override {}
-   void visit(Ref<const Index>, int a) override {}
-   void visit(Ref<const Dom>, int a) override {}
-   void visit(Ref<const LoopNest>, int a) override {}
-   void visit(Ref<const IfThenElse>, int a) override {}
-   void visit(Ref<const Move>, int a) override {}
-   void visit(Ref<const Kernel>, int a) override {}
-   void visit(Ref<const PlaceholderOp>, int a) override {}
-   void visit(Ref<const ComputeOp>, int a) override {}
+   int visit(Ref<const IntImm> op) override { return 1; }
+   int visit(Ref<const UIntImm> op) override { return 1; }
+   int visit(Ref<const FloatImm> op) override { return 1; }
+   int visit(Ref<const StringImm> op) override { return 1; }
+   int visit(Ref<const Unary> op) override { return visit_expr(op->a) + 1; }
+   int visit(Ref<const Binary> op) override { return visit_expr(op->a) + visit_expr(op->b) + 1; }
+   int visit(Ref<const Select> op) override { return visit_expr(op->cond) + visit_expr(op->true_value) + visit_expr(op->false_value) + 1; }
+   int visit(Ref<const Compare> op) override { return visit_expr(op->a) + visit_expr(op->b) + 1; }
+   int visit(Ref<const Call> op) override {
+       int tmp = 0;
+       for (auto arg : op->args) {
+           tmp += visit_expr(arg);
+       }
+       return tmp;
+   }
+   int visit(Ref<const Var> op) override {
+       int tmp = 0;
+       for (auto arg : op->args) {
+           tmp += visit_expr(arg);
+       }
+       return tmp;
+   }
+   int visit(Ref<const Cast> op) override { return visit_expr(op->val) + 1; }
+   int visit(Ref<const Ramp> op) override {
+       return visit_expr(op->base) + 1;
+   }
+   int visit(Ref<const Index> op) override {
+       return visit_expr(op->dom) + 1;
+   }
+   int visit(Ref<const Dom> op) override {
+       return visit_expr(op->begin) + visit_expr(op->extent) + 1;
+   }
 };
 
 int main() {
@@ -62,11 +74,13 @@ int main() {
     // C
     Expr expr_C = Var::make(data_type, "C", {i, j}, {M, N});
 
+    Expr src = Binary::make(data_type, BinaryOpType::Add, expr_C,
+            Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_B));
+
     // main stmt
     Stmt main_stmt = Move::make(
         expr_C,
-        Binary::make(data_type, BinaryOpType::Add, expr_C,
-            Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_B)),
+        src,
         MoveType::MemToMem
     );
 
@@ -77,10 +91,8 @@ int main() {
     Group kernel = Kernel::make("simple_gemm", {expr_A, expr_B}, {expr_C}, {loop_nest}, KernelType::CPU);
 
     // functor
-    // IRFunctor<void(int)> visitor;
-    // kernel.visit_(&visitor);
-    // MyVisitor myvisitor;
-    // kernel.visit_(myvisitor);
+    ExprVisitor visitor;
+    std::cout << visitor.visit_expr(src) << "\n";
 
     std::cout << "Success!\n";
     return 0;
