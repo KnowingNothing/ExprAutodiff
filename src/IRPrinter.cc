@@ -343,4 +343,28 @@ void IRPrinter::visit(Ref<const ComputeOp> op){
 
 }  // namespace Internal
 
+namespace Internal {
+
+std::ostream &operator<<(std::ostream &out, const Expr& expr) {
+  IRPrinter printer;
+  out << printer.print(expr);
+  return out;
+}
+
+
+std::ostream &operator<<(std::ostream &out, const Stmt& stmt) {
+  IRPrinter printer;
+  out << printer.print(stmt);
+  return out;
+}
+
+
+std::ostream &operator<<(std::ostream &out, const Group& group) {
+  IRPrinter printer;
+  out << printer.print(group);
+  return out;
+}
+
+}  // namespace Internal
+
 }  // namespace Boost

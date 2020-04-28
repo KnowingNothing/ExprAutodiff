@@ -68,23 +68,24 @@ class LazyLogging {
         std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(
             std::chrono::system_clock::now().time_since_epoch()
         );
-
-        switch (log_level)
-        {
-        case LogLevel::INFO:
-            std::cerr << "[Info] " << "[time=" << ms.count() << "] ";
-            break;
-        case LogLevel::WARNING:
-            std::cerr << "[Warning] " << "[time=" << ms.count() << "] ";
-            break;
-        case LogLevel::ERROR:
-            std::cerr << "[Error] " << "[time=" << ms.count() << "] ";
-            break;
-        default:
-            break;
+        if (do_print) {
+            switch (log_level)
+            {
+            case LogLevel::INFO:
+                std::cerr << "[Info] " << "[time=" << ms.count() << "] ";
+                break;
+            case LogLevel::WARNING:
+                std::cerr << "[Warning] " << "[time=" << ms.count() << "] ";
+                break;
+            case LogLevel::ERROR:
+                std::cerr << "[Error] " << "[time=" << ms.count() << "] ";
+                break;
+            default:
+                break;
+            }
+            if (oss.str().size() != 0)
+                std::cerr << oss.str() << "\n";
         }
-        if (do_print && oss.str().size() != 0)
-            std::cerr << oss.str() << "\n";
     }
 
     template<typename T>
@@ -106,7 +107,7 @@ class LazyLogging {
 
 #define ASSERT(cond)                                        \
     (                                                       \
-        [=]()-> LazyLogging {                                \
+        [&]()-> LazyLogging {                                \
             if (!(cond)) {                                  \
                 return LazyLogging(LogLevel::ERROR);        \
             } else {                                        \

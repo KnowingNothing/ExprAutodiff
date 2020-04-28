@@ -38,6 +38,9 @@ std::string CodeGen_C::print_type(const Type &t) {
   std::ostringstream out;
   switch (t.code)
   {
+  case Internal::TypeCode::Bool:
+    out << "bool";
+    break;
   case Internal::TypeCode::Int:
     out << "int" << t.bits << "_t";
     break;

@@ -28,9 +28,15 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <functional>
 
 #include "IR.h"
+#include "arith.h"
 #include "IRVisitor.h"
+#include "IRMutator.h"
+#include "IRPrinter.h"
+#include "IRFunctor.h"
 
 namespace Boost {
 
@@ -50,111 +56,197 @@ class NameGenerator {
 };
 
 
-enum class ExtRangeType : uint8_t {
-  LORC,  // left open right close
-  LORO,  // left open right open
-  LCRO,  // left close right open
-  LCRC   // left close right close
-};
-
-
-class ExtRange {
+class ExprEqualByValue : public ExprFunctor<bool(const Expr&, const Expr&)> {
  public:
-  Expr left;
-  Expr right;
-  bool left_inf;
-  bool right_inf;
-
-  ExtRange() { left_inf = true; right_inf = true; }
-
-  ExtRange(ExtRange &range) : left(range.left), right(range.right),
-    left_inf(range.left_inf), right_inf(range.right_inf) {}
-
-  ExtRange(ExtRange &&range) : left(std::move(range.left)), right(std::move(range.right)),
-    left_inf(std::move(range.left_inf)), right_inf(std::move(range.right_inf)) {}
-
-  ExtRange(const ExtRange &range) : left(range.left), right(range.right),
-    left_inf(range.left_inf), right_inf(range.right_inf) {}
-
-  ExtRange(const ExtRange &&range) : left(std::move(range.left)), right(std::move(range.right)),
-    left_inf(std::move(range.left_inf)), right_inf(std::move(range.right_inf)) {}
-
-  ExtRange(Expr l, Expr r, bool li, bool ri) : left(l), right(r), left_inf(li), right_inf(ri) {}
-
-  ExtRange &operator=(ExtRange &range) {
-    left = range.left;
-    right = range.right;
-    left_inf = range.left_inf;
-    right_inf = range.right_inf;
-    return *this;
-  }
-
-  ExtRange &operator=(ExtRange &&range) {
-    left = std::move(range.left);
-    right = std::move(range.right);
-    left_inf = std::move(range.left_inf);
-    right_inf = std::move(range.right_inf);
-    return *this;
-  }
-
-  ExtRange &operator=(const ExtRange &range) {
-    left = range.left;
-    right = range.right;
-    left_inf = range.left_inf;
-    right_inf = range.right_inf;
-    return *this;
-  }
-
-  ExtRange &operator=(const ExtRange &&range) {
-    left = std::move(range.left);
-    right = std::move(range.right);
-    left_inf = std::move(range.left_inf);
-    right_inf = std::move(range.right_inf);
-    return *this;
-  }
-
-  ExtRange floor_div(int factor);
-
-  ExtRange floor_mod(int factor);
-
-  ExtRangeType range_type() {
-    if (left_inf && right_inf) {
-      return ExtRangeType::LORO;
-    } else if (left_inf && !right_inf) {
-      return ExtRangeType::LORC;
-    } else if (!left_inf && !right_inf) {
-      return ExtRangeType::LCRC;
-    } else {
-      return ExtRangeType::LCRO;
+  #define CHECK_TYPE(T)                       \
+    Ref<const T> other_op = other.as<T>();    \
+    if (!other_op.defined()) {                \
+      return false;                           \
+    }                                         \
+    if (op->type() != other_op->type()) {     \
+      return false;                           \
     }
+  bool visit(Ref<const IntImm> op, const Expr& other) override {
+    CHECK_TYPE(IntImm)
+    return op->value() == other_op->value();
+  }
+
+  bool visit(Ref<const UIntImm> op, const Expr& other) override {
+    CHECK_TYPE(UIntImm)
+    return op->value() == other_op->value();
+  }
+
+  bool visit(Ref<const FloatImm> op, const Expr& other) override {
+    CHECK_TYPE(FloatImm)
+    return op->value() == other_op->value();
+  }
+
+  bool visit(Ref<const StringImm> op, const Expr& other) override {
+    CHECK_TYPE(StringImm)
+    return op->value() == other_op->value();
+  }
+
+  bool visit(Ref<const Unary> op, const Expr& other) override {
+    CHECK_TYPE(Unary)
+    return (op->op_type == other_op->op_type) && visit_expr(op->a, other_op->a);
+  }
+
+  bool visit(Ref<const Binary> op, const Expr& other) override {
+    CHECK_TYPE(Binary)
+    return ((op->op_type == other_op->op_type)
+      && visit_expr(op->a, other_op->a) && visit_expr(op->b, other_op->b));
+  }
+
+  bool visit(Ref<const Select> op, const Expr& other) override {
+    CHECK_TYPE(Select)
+    return (visit_expr(op->cond, other_op->cond)
+      && visit_expr(op->true_value, other_op->true_value)
+      && visit_expr(op->false_value, other_op->false_value));
+  }
+
+  bool visit(Ref<const Compare> op, const Expr& other) override {
+    CHECK_TYPE(Compare)
+    return ((op->op_type == other_op->op_type)
+      && visit_expr(op->a, other_op->a) && visit_expr(op->b, other_op->b));
+  }
+
+  bool visit(Ref<const Call> op, const Expr& other) override {
+    CHECK_TYPE(Call)
+    bool ret = true;
+    int num_args = (int)op->args.size();
+    ret = ret && (num_args == (int)other_op->args.size());
+    for (int i = 0; i < num_args; ++i) {
+      ret = ret && visit_expr(op->args[i], other_op->args[i]);
+    }
+    ret = (ret && (op->func_name == other_op->func_name)
+          && (op->call_type == other_op->call_type));
+    return ret;
+  }
+
+  bool visit(Ref<const Var> op, const Expr& other) override {
+    CHECK_TYPE(Var)
+    bool ret = op->name == other_op->name;
+    int num_args = (int)op->args.size();
+    ret = ret && (num_args == (int)other_op->args.size());
+    for (int i = 0; i < num_args; ++i) {
+      ret = ret && visit_expr(op->args[i], other_op->args[i]);
+    }
+    int dim = (int)op->shape.size();
+    ret = ret && (dim == (int)other_op->shape.size());
+    for (int i = 0; i < dim; ++i) {
+      ret = ret && (op->shape[i] == other_op->shape[i]);
+    }
+    return ret;
+  }
+
+  bool visit(Ref<const Cast> op, const Expr& other) override {
+    CHECK_TYPE(Cast)
+    return ((op->new_type == other_op->new_type)
+        && visit_expr(op->val, other_op->val));
+  }
+
+  bool visit(Ref<const Ramp> op, const Expr& other) override {
+    CHECK_TYPE(Ramp)
+    return (visit_expr(op->base, other_op->base)
+      && (op->stride == other_op->stride) && (op->lanes == other_op->lanes));
+  }
+
+  bool visit(Ref<const Index> op, const Expr& other) override {
+    CHECK_TYPE(Index)
+    return ((op->name == other_op->name)
+      && visit_expr(op->dom, other_op->dom)
+      && (op->index_type == other_op->index_type));
+  }
+
+  bool visit(Ref<const Dom> op, const Expr& other) override {
+    CHECK_TYPE(Dom)
+    return (visit_expr(op->begin, other_op->begin)
+          && visit_expr(op->extent, other_op->extent));
   }
 };
 
 
-class RangeInference : public IRVisitor {
+class SubstituteIndexByName : public IRMutator {
  private:
-  std::vector<ExtRange> scope_;
+  std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap_;
  public:
-  std::unordered_map<std::string, ExtRange> range_map;
-  RangeInference(ExtRange init) { scope_.push_back(init); }
+  SubstituteIndexByName(
+    std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap) : vmap_(vmap) {}
+  
+  Expr substitute(const Expr &expr) {
+    return mutate(expr);
+  }
 
-  void do_infer(const Expr &expr) {
+  Expr visit(Ref<const Index> op) override {
+    for (auto kv : vmap_) {
+      if (op->name == kv.first->name) {
+        return kv.second;
+      }
+    }
+    return op;
+  }
+};
+
+
+class SubstituteIndex : public IRMutator {
+ private:
+  std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap_;
+ public:
+  SubstituteIndex(
+    std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap) : vmap_(vmap) {}
+
+  Expr substitute(const Expr &expr) {
+    return mutate(expr);
+  }
+
+  Expr visit(Ref<const Index> op) override {
+    for (auto kv : vmap_) {
+      if (op == kv.first) {
+        return kv.second;
+      }
+    }
+    return op;
+  }
+};
+
+
+Expr substitute_index(const Expr &expr,
+  std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap);
+
+
+Expr substitute_index_by_name(const Expr &expr,
+  std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap);
+
+
+class IndexCollector : public IRVisitor {
+ public:
+  IndexCollector(std::function<bool(Ref<const Index>)> func) : func_(func) {}
+
+  void collect(const Expr& expr, std::vector<Ref<const Index>> &results) {
+    results_ = &results;
     expr.visit_expr(this);
   }
 
- protected:
-  // list of functions to override.
-  void visit(Ref<const Index> op) override;
+  void collect(const Stmt& stmt, std::vector<Ref<const Index>> &results) {
+    results_ = &results;
+    stmt.visit_stmt(this);
+  }
 
-  // only for Neg
-  void visit(Ref<const Unary> op) override;
+  void collect(const Group& group, std::vector<Ref<const Index>> &results) {
+    results_ = &results;
+    group.visit_group(this);
+  }
 
-  // only for Add/Sub/Mul
-  void visit(Ref<const Binary> op) override;
+  void visit(Ref<const Index> op) override {
+    if (func_(op)) {
+      (*results_).push_back(op);
+    }
+  }
+ private:
+  std::function<bool(Ref<const Index>)> func_;
+  std::vector<Ref<const Index>> *results_ = nullptr;
 };
 
-
-std::vector<Expr> relax_matrix_array_product(Arith::Matrix<int> &m, std::vector<Expr> &v);
 
 }  // namespace Utils
 

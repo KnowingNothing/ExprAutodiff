@@ -29,7 +29,7 @@
 #include <string>
 
 #include "type.h"
-#include "arith.h"
+// #include "arith.h"
 #include "debug.h"
 
 namespace Boost {
@@ -49,33 +49,33 @@ class Ref {
  public:
     Ref() {}
 
-    Ref(Ref<T> &other) : ptr(other.ptr) {}
+    Ref(const Ref<T> &other) : ptr(other.ptr) {}
 
-    Ref(Ref<T> &&other) : ptr(std::move(other.ptr)) {}
+    Ref(const Ref<T> &&other) : ptr(std::move(other.ptr)) {}
 
     /**
      * allow constructing from sub-class
      */ 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
-    Ref(Ref<U> &other) : ptr(other.real_ptr()) {}
+    Ref(const Ref<U> &other) : ptr(other.real_ptr()) {}
 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
-    Ref(Ref<U> &&other) : ptr(std::move(other.real_ptr())) {}
+    Ref(const Ref<U> &&other) : ptr(std::move(other.real_ptr())) {}
 
     /**
      * allow constructing from shared_ptr of sub-class
      */ 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
-    Ref(std::shared_ptr<U> _ptr) : ptr(_ptr) {}
+    Ref(const std::shared_ptr<U> _ptr) : ptr(_ptr) {}
 
-    bool defined() { return ptr != nullptr; }
+    bool defined() const { return ptr != nullptr; }
 
     T *get() const { return ptr.get(); }
 
     /**
      * have to expose inner shared_ptr, required by constructor
      */ 
-    void set_ptr(std::shared_ptr<T> other) {
+    void set_ptr(const std::shared_ptr<T> other) {
         this->ptr = other;
     }
 
@@ -87,22 +87,22 @@ class Ref {
 
     T *operator->() const { return ptr.operator->(); }
 
-    Ref<T> &operator=(Ref<T> &b) {
+    Ref<T> &operator=(const Ref<T> &b) {
         this->ptr = b.ptr;
         return *this;
     }
 
-    Ref<T> &operator=(Ref<T> &&b) {
-        swap(this->ptr, b.ptr);
+    Ref<T> &operator=(const Ref<T> &&b) {
+        this->ptr = b.ptr;
         return *this;
     }
 
-    bool operator<(Ref<T> &b) const {
+    bool operator<(const Ref<T> &b) const {
         /* Don't directly compare shared_ptr, for C++20 removes operator< */
         return this->get() < b.get();
     }
 
-    bool operator==(Ref<T> &b) const {
+    bool operator==(const Ref<T> &b) const {
         return this->get() == b.get();
     }
 };
@@ -849,6 +849,10 @@ class Dom : public ExprNode, public std::enable_shared_from_this<Dom> {
     Expr begin;
     Expr extent;
 
+    bool undertermined() const {
+        return !begin.defined() || !extent.defined();
+    }
+
     Dom(Type _type, Expr _begin, Expr _extent) : ExprNode(_type, IRNodeType::Dom), begin(_begin), extent(_extent) {}
 
     Expr mutate_expr(IRMutator *mutator) const;
@@ -870,7 +874,8 @@ enum class IndexType : uint8_t {
     Thread,
     Block,
     Vectorized,
-    Unrolled
+    Unrolled,
+    Unknown
 };
 
 
