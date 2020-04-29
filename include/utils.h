@@ -52,6 +52,8 @@ class NameGenerator {
 
   std::string unique_name(const std::string &name_hint);
 
+  bool has_name(const std::string &name_hint);
+
   std::string operator()(const std::string &name_hint);
 };
 
@@ -246,6 +248,28 @@ class IndexCollector : public IRVisitor {
   std::function<bool(Ref<const Index>)> func_;
   std::vector<Ref<const Index>> *results_ = nullptr;
 };
+
+
+template<typename T>
+Expr make_const(Type t, T v) {
+  switch (t.code)
+  {
+  case TypeCode::Int:
+    return IntImm::make(t, v);
+    break;
+  case TypeCode::UInt:
+    return UIntImm::make(t, v);
+    break;
+  case TypeCode::Float:
+    return FloatImm::make(t, v);
+    break;
+  case TypeCode::Bool:
+    return UIntImm::make(t, v);
+    break;
+  default: {LOG(ERROR) << "Can't make const for type " << t << "."; throw;}
+    break;
+  }
+}
 
 
 }  // namespace Utils

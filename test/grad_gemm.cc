@@ -7,6 +7,7 @@
 #include "IRPrinter.h"
 #include "type.h"
 #include "autodiff.h"
+#include "codegen_C.h"
 
 using namespace Boost::Internal;
 
@@ -69,10 +70,16 @@ int main() {
 
     std::cout << code;
 
-    // auto diff
-    Stmt new_stmt = Boost::Autodiff::grad_stmt(rhs, expr_A.as<Var>(), expr_C.as<Var>());
 
-    std::cout << printer.print(new_stmt);
+    Expr expr_dC = Var::make(data_type, "dC", {i, j}, {M, N});
+
+    // auto diff
+    Stmt new_stmt = Boost::Autodiff::grad_stmt(rhs, {i, j, k}, {0, 1}, expr_A.as<Var>(), expr_dC.as<Var>());
+
+    std::cout << printer.print(new_stmt) << "\n";
+
+    Boost::codegen::CodeGen_C gen;
+    std::cout << gen.print(new_stmt) << "\n";
 
     std::cout << "Success!\n";
     return 0;

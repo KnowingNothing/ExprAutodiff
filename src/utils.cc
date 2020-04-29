@@ -50,6 +50,11 @@ std::string NameGenerator::unique_name(const std::string &name_hint) {
 }
 
 
+bool NameGenerator::has_name(const std::string &name_hint) {
+  return (name_map_.count(name_hint) != 0);
+}
+
+
 std::string NameGenerator::operator()(const std::string &name_hint) {
   return unique_name(name_hint);
 }

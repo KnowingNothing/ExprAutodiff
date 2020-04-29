@@ -30,6 +30,7 @@
 
 #include "IR.h"
 #include "IRVisitor.h"
+#include "IRPrinter.h"
 
 namespace Boost {
 
@@ -136,6 +137,18 @@ Expr div(const Expr &a, const Expr &b);
 
 
 Expr operator/(const Expr &a, const Expr &b);
+
+
+Expr logic_and(const Expr &a, const Expr &b);
+
+
+Expr operator&&(const Expr &a, const Expr &b);
+
+
+Expr logic_or(const Expr &a, const Expr &b);
+
+
+Expr operator||(const Expr &a, const Expr &b);
 
 
 Expr floordiv(const Expr &a, const Expr &b);

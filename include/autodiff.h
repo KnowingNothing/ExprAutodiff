@@ -201,6 +201,7 @@ class ExtractIndexCoefficients : public ExprFunctor<void(const Expr&)> {
   void get_coefficients(const Expr& expr, std::unordered_map<std::string, VType> &result) {
     result[const_tag_] = (VType)0;
     scope_.push_back(&result);
+    visit_expr(expr);
   }
 
  protected:
@@ -278,7 +279,8 @@ void solve_substitutions(SubstituteContext &context,
 
 
 
-Stmt grad_stmt(Expr expr, Ref<const Var> grad_to, Ref<const Var> doutput);
+Stmt grad_stmt(Expr expr, std::vector<Expr> call_args, std::vector<int> call_args_index, 
+    Ref<const Var> grad_to, Ref<const Var> doutput);
 
 }  // namespace Autodiff
 

@@ -391,6 +391,26 @@ Expr operator/(const Expr &a, const Expr &b) {
 }
 
 
+Expr logic_and(const Expr &a, const Expr &b) {
+  return Binary::make(Type::bool_scalar(), BinaryOpType::And, a, b);
+}
+
+
+Expr operator&&(const Expr &a, const Expr &b) {
+  return logic_and(a, b);
+}
+
+
+Expr logic_or(const Expr &a, const Expr &b) {
+  return Binary::make(Type::bool_scalar(), BinaryOpType::Or, a, b);
+}
+
+
+Expr operator||(const Expr &a, const Expr &b) {
+  return logic_or(a, b);
+}
+
+
 Expr floordiv(const Expr &a, const Expr &b) {
   return Binary::make(a.type(), BinaryOpType::FloorDiv, a, b);
 }
@@ -612,6 +632,71 @@ void RangeInference::visit(Ref<const Binary> op) {
       (op->a).visit_expr(this);
       scope_.pop_back();
     }
+  } else if (op->op_type == BinaryOpType::FloorDiv) {
+    Ref<const IntImm> a_as_int = op->a.as<IntImm>();
+    Ref<const IntImm> b_as_int = op->b.as<IntImm>();
+    ExtRange range = scope_.back();
+    if (a_as_int.defined()) {
+      // int bias = (int)a_as_int->value();
+      // TODO: can't identify zero division problems
+      LOG(WARNING) << "Can't get concrete bound in such case: " << Expr(op) << ".";
+      // if (!range.left_inf && !range.right_inf) {
+      //   Expr new_left = floordiv(add(bias, sub(range.right, 1)), range.right);
+      //   range.right = add(floordiv(bias,range.left), 1);
+      //   range.left = new_left;
+      // } else if (range.left_inf && !range.right_inf) {
+      //   range.left = floordiv(bias, range.right);
+      //   range.right = 0;
+      // } else if (!range.left_inf && range.right_inf) {
+      //   range.right = add(floordiv(bias,range.left), 1);
+      //   range.left = 0;
+      // } else {
+      //   // do nothing
+      // }
+      range.left_inf = true;
+      range.right_inf = true;
+      scope_.push_back(range);
+      (op->b).visit_expr(this);
+      scope_.pop_back();
+    } else if (b_as_int.defined()) {
+      int bias = (int)b_as_int->value();
+      if (bias > 0) {
+        if (!range.left_inf && !range.right_inf) {
+          range.left = mul(range.left, bias);
+          // TODO: can we get a more tight bound?
+          range.right = add(mul(range.right, bias), bias-1);
+        } else if (range.left_inf && !range.right_inf) {
+          range.right = add(mul(range.right, bias), bias-1);
+        } else if (!range.left_inf && range.right_inf) {
+          range.left = mul(range.left, bias);
+        } else {
+          // do nothing
+        }
+      } else if (bias < 0) {
+        if (!range.left_inf && !range.right_inf) {
+          Expr new_left = add(mul(range.right, bias), bias-1);
+          range.right = add(mul(range.left, bias), 1);
+          range.left = new_left;
+        } else if (range.left_inf && !range.right_inf) {
+          range.left = add(mul(range.right, bias), bias-1);
+          range.right_inf = true;
+        } else if (!range.left_inf && range.right_inf) {
+          range.right = add(mul(range.left, bias), 1);
+          range.left_inf = true;
+        } else {
+          // do nothing
+        }
+      } else {
+        LOG(ERROR) << "Find floordiv by 0: " << Expr(op) << ".";
+      }
+      scope_.push_back(range);
+      (op->a).visit_expr(this);
+      scope_.pop_back();
+    }
+  } else if (op->op_type == BinaryOpType::FloorMod) {
+    LOG(WARNING) << "No implement for floormod case: " << Expr(op) << ".";
+  } else {
+    LOG(ERROR) << "Unexpected binary op type in range inference: " << Expr(op) << ".";
   }
 }
 
