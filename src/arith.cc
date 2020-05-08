@@ -22,7 +22,10 @@
  * SOFTWARE.
 */
 
+#include <functional>
+
 #include "debug.h"
+#include "type.h"
 #include "arith.h"
 
 namespace Boost {
@@ -312,6 +315,418 @@ int smith_normalize(Matrix<int> &trans, Matrix<int> &U, Matrix<int> &V) {
   }
 
   return dim;
+}
+
+
+std::vector<Expr> relax_matrix_array_product(Matrix<int> &m, std::vector<Expr> &v) {
+  std::vector<Expr> res;
+  int rows = m.height();
+  int cols = m.width();
+  ASSERT(cols <= (int)v.size()) << "Matrix-Array-Mult shape mismatch.\n";
+  for (int i = 0; i < rows; ++i) {
+    Expr tmp = 0;
+    for (int j = 0; j < cols; ++j) {
+      if (m[i][j] != 0) {
+        tmp = Binary::make(
+          tmp.type(),
+          BinaryOpType::Add,
+          tmp,
+          Binary::make(tmp.type(), BinaryOpType::Mul, v[j], m[i][j])
+        );
+      }
+    }
+    res.push_back(tmp);
+  }
+  return res;
+}
+
+
+Expr add(const Expr &a, const Expr &b) {
+  return Binary::make(a.type(), BinaryOpType::Add, a, b);
+}
+
+
+Expr operator+(const Expr &a, const Expr &b) {
+  return add(a, b);
+}
+
+
+Expr sub(const Expr &a, const Expr &b) {
+  return Binary::make(a.type(), BinaryOpType::Sub, a, b);
+}
+
+
+Expr operator-(const Expr &a, const Expr &b) {
+  return sub(a, b);
+}
+
+
+Expr neg(const Expr &a) {
+  return Unary::make(a.type(), UnaryOpType::Neg, a);
+}
+
+
+Expr operator-(const Expr &a) {
+  return neg(a);
+}
+
+
+Expr mul(const Expr &a, const Expr &b) {
+  return Binary::make(a.type(), BinaryOpType::Mul, a, b);
+}
+
+
+Expr operator*(const Expr &a, const Expr &b) {
+  return mul(a, b);
+}
+
+
+Expr div(const Expr &a, const Expr &b) {
+  return Binary::make(a.type(), BinaryOpType::Div, a, b);
+}
+
+
+Expr operator/(const Expr &a, const Expr &b) {
+  return div(a, b);
+}
+
+
+Expr logic_and(const Expr &a, const Expr &b) {
+  return Binary::make(Type::bool_scalar(), BinaryOpType::And, a, b);
+}
+
+
+Expr operator&&(const Expr &a, const Expr &b) {
+  return logic_and(a, b);
+}
+
+
+Expr logic_or(const Expr &a, const Expr &b) {
+  return Binary::make(Type::bool_scalar(), BinaryOpType::Or, a, b);
+}
+
+
+Expr operator||(const Expr &a, const Expr &b) {
+  return logic_or(a, b);
+}
+
+
+Expr floordiv(const Expr &a, const Expr &b) {
+  return Binary::make(a.type(), BinaryOpType::FloorDiv, a, b);
+}
+
+
+Expr mod(const Expr &a, const Expr &b) {
+  return Binary::make(a.type(), BinaryOpType::Mod, a, b);
+}
+
+
+Expr floormod(const Expr &a, const Expr &b) {
+  return Binary::make(a.type(), BinaryOpType::FloorMod, a, b);
+}
+
+
+Expr eq(const Expr &a, const Expr &b) {
+  return Compare::make(Type::bool_scalar(), CompareOpType::EQ, a, b);
+}
+
+
+Expr ne(const Expr &a, const Expr &b) {
+  return Compare::make(Type::bool_scalar(), CompareOpType::NE, a, b);
+}
+
+
+Expr gt(const Expr &a, const Expr &b) {
+  return Compare::make(Type::bool_scalar(), CompareOpType::GT, a, b);
+}
+
+
+Expr ge(const Expr &a, const Expr &b) {
+  return Compare::make(Type::bool_scalar(), CompareOpType::GE, a, b);
+}
+
+
+Expr lt(const Expr &a, const Expr &b) {
+  return Compare::make(Type::bool_scalar(), CompareOpType::LT, a, b);
+}
+
+
+Expr le(const Expr &a, const Expr &b) {
+  return Compare::make(Type::bool_scalar(), CompareOpType::LE, a, b);
+}
+
+
+ExtRange ExtRange::floor_div(int factor) {
+  ExtRange ret;
+  if (!this->left_inf) {
+    ret.left = Binary::make(this->left.type(), BinaryOpType::FloorDiv, this->left, factor);
+    ret.left_inf = false;
+  }
+  if (!this->right_inf) {
+    // ceil div
+    ret.right = Binary::make(
+      this->right.type(), BinaryOpType::FloorDiv,
+      Binary::make(this->right.type(), BinaryOpType::Add, this->right, factor - 1), factor);
+    ret.right_inf = false;
+  }
+  return ret;
+}
+
+
+ExtRange ExtRange::floor_mod(int factor) {
+  return ExtRange(0, factor, false, false);
+}
+
+
+void RangeInference::visit(Ref<const Index> op) {
+  range_map[op->name] = scope_.back();
+}
+
+
+void RangeInference::visit(Ref<const Binary> op) {
+  if (op->op_type == BinaryOpType::Add) {
+    Ref<const IntImm> a_as_int = op->a.as<IntImm>();
+    Ref<const IntImm> b_as_int = op->b.as<IntImm>();
+    ExtRange range = scope_.back();
+    if (a_as_int.defined()) {
+      int bias = (int)a_as_int->value();
+      if (!range.left_inf) {
+        range.left = range.left - bias;
+      }
+      if (!range.right_inf) {
+        range.right = range.right - bias;
+      }
+      scope_.push_back(range);
+      (op->b).visit_expr(this);
+      scope_.pop_back();
+    } else if (b_as_int.defined()) {
+      int bias = (int)b_as_int->value();
+      if (!range.left_inf) {
+        range.left = range.left - bias;
+      }
+      if (!range.right_inf) {
+        range.right = range.right - bias;
+      }
+      scope_.push_back(range);
+      (op->a).visit_expr(this);
+      scope_.pop_back();
+    }
+  } else if (op->op_type == BinaryOpType::Sub) {
+    Ref<const IntImm> a_as_int = op->a.as<IntImm>();
+    Ref<const IntImm> b_as_int = op->b.as<IntImm>();
+    ExtRange range = scope_.back();
+    if (a_as_int.defined()) {
+      int bias = (int)a_as_int->value();
+      ExtRangeType range_type = range.range_type();
+      if (range_type == ExtRangeType::LCRC) {
+        range.left = bias - scope_.back().right;
+        range.right = bias - scope_.back().left;
+      } else if (range_type == ExtRangeType::LCRO) {
+        range.left_inf = true;
+        range.right_inf = false;
+        range.right = bias - range.left;
+      } else if (range_type == ExtRangeType::LORC) {
+        range.left_inf = false;
+        range.right_inf = true;
+        range.left = bias - range.right;
+      } else {
+        // nothing to do
+      }
+      scope_.push_back(range);
+      (op->b).visit_expr(this);
+      scope_.pop_back();
+    } else if (b_as_int.defined()) {
+      int bias = (int)b_as_int->value();
+      if (!range.left_inf) {
+        range.left = add(range.left, bias);
+      }
+      if (!range.right_inf) {
+        range.right = add(range.right, bias);
+      }
+      scope_.push_back(range);
+      (op->a).visit_expr(this);
+      scope_.pop_back();
+    }
+  } else if (op->op_type == BinaryOpType::Mul) {
+    Ref<const IntImm> a_as_int = op->a.as<IntImm>();
+    Ref<const IntImm> b_as_int = op->b.as<IntImm>();
+    ExtRange range = scope_.back();
+    if (a_as_int.defined()) {
+      int bias = (int)a_as_int->value();
+      if (bias == 0) {
+        range.left = 0;
+        range.left_inf = false;
+        range.right = 1;
+        range.right_inf = false;
+      } else if (bias > 0) {
+        ExtRangeType range_type = range.range_type();
+        if (range_type == ExtRangeType::LCRC) {
+          range.left = floordiv(range.left, bias);
+          range.right = floordiv(add(range.right, bias - 1), bias);
+        } else if (range_type == ExtRangeType::LCRO) {
+          range.left = floordiv(range.left, bias);
+        } else if (range_type == ExtRangeType::LORC) {
+          range.right = floordiv(add(range.right, bias - 1), bias);
+        } else {
+          // nothing to do
+        }
+      } else {
+        ExtRangeType range_type = range.range_type();
+        if (range_type == ExtRangeType::LCRC) {
+          range.left = mul(sub(floordiv(add(scope_.back().right, -bias-1), -bias), 1), -1);
+          range.right = mul(sub(floordiv(scope_.back().left, -bias), 1), -1);
+        } else if (range_type == ExtRangeType::LCRO) {
+          range.left_inf = true;
+          range.right_inf = false;
+          range.right = mul(sub(floordiv(range.left, -bias), 1), -1);
+        } else if (range_type == ExtRangeType::LORC) {
+          range.left_inf = false;
+          range.right_inf = true;
+          range.left = mul(sub(floordiv(add(range.right, -bias-1), -bias), 1), -1);
+        } else {
+          // nothing to do
+        }
+      }
+      
+      scope_.push_back(range);
+      (op->b).visit_expr(this);
+      scope_.pop_back();
+    } else if (b_as_int.defined()) {
+      int bias = (int)b_as_int->value();
+      if (bias == 0) {
+        range.left = 0;
+        range.left_inf = false;
+        range.right = 1;
+        range.right_inf = false;
+      } else if (bias > 0) {
+        ExtRangeType range_type = range.range_type();
+        if (range_type == ExtRangeType::LCRC) {
+          range.left = floordiv(range.left, bias);
+          range.right = floordiv(add(range.right, bias - 1), bias);
+        } else if (range_type == ExtRangeType::LCRO) {
+          range.left = floordiv(range.left, bias);
+        } else if (range_type == ExtRangeType::LORC) {
+          range.right = floordiv(add(range.right, bias - 1), bias);
+        } else {
+          // nothing to do
+        }
+      } else {
+        ExtRangeType range_type = range.range_type();
+        if (range_type == ExtRangeType::LCRC) {
+          range.left = mul(sub(floordiv(add(scope_.back().right, -bias-1), -bias), 1), -1);
+          range.right = mul(sub(floordiv(scope_.back().left, -bias), 1), -1);
+        } else if (range_type == ExtRangeType::LCRO) {
+          range.left_inf = true;
+          range.right_inf = false;
+          range.right = mul(sub(floordiv(range.left, -bias), 1), -1);
+        } else if (range_type == ExtRangeType::LORC) {
+          range.left_inf = false;
+          range.right_inf = true;
+          range.left = mul(sub(floordiv(add(range.right, -bias-1), -bias), 1), -1);
+        } else {
+          // nothing to do
+        }
+      }
+      
+      scope_.push_back(range);
+      (op->a).visit_expr(this);
+      scope_.pop_back();
+    }
+  } else if (op->op_type == BinaryOpType::FloorDiv) {
+    Ref<const IntImm> a_as_int = op->a.as<IntImm>();
+    Ref<const IntImm> b_as_int = op->b.as<IntImm>();
+    ExtRange range = scope_.back();
+    if (a_as_int.defined()) {
+      // int bias = (int)a_as_int->value();
+      // TODO: can't identify zero division problems
+      LOG(WARNING) << "Can't get concrete bound in such case: " << Expr(op) << ".";
+      // if (!range.left_inf && !range.right_inf) {
+      //   Expr new_left = floordiv(add(bias, sub(range.right, 1)), range.right);
+      //   range.right = add(floordiv(bias,range.left), 1);
+      //   range.left = new_left;
+      // } else if (range.left_inf && !range.right_inf) {
+      //   range.left = floordiv(bias, range.right);
+      //   range.right = 0;
+      // } else if (!range.left_inf && range.right_inf) {
+      //   range.right = add(floordiv(bias,range.left), 1);
+      //   range.left = 0;
+      // } else {
+      //   // do nothing
+      // }
+      range.left_inf = true;
+      range.right_inf = true;
+      scope_.push_back(range);
+      (op->b).visit_expr(this);
+      scope_.pop_back();
+    } else if (b_as_int.defined()) {
+      int bias = (int)b_as_int->value();
+      if (bias > 0) {
+        if (!range.left_inf && !range.right_inf) {
+          range.left = mul(range.left, bias);
+          // TODO: can we get a more tight bound?
+          range.right = add(mul(range.right, bias), bias-1);
+        } else if (range.left_inf && !range.right_inf) {
+          range.right = add(mul(range.right, bias), bias-1);
+        } else if (!range.left_inf && range.right_inf) {
+          range.left = mul(range.left, bias);
+        } else {
+          // do nothing
+        }
+      } else if (bias < 0) {
+        if (!range.left_inf && !range.right_inf) {
+          Expr new_left = add(mul(range.right, bias), bias-1);
+          range.right = add(mul(range.left, bias), 1);
+          range.left = new_left;
+        } else if (range.left_inf && !range.right_inf) {
+          range.left = add(mul(range.right, bias), bias-1);
+          range.right_inf = true;
+        } else if (!range.left_inf && range.right_inf) {
+          range.right = add(mul(range.left, bias), 1);
+          range.left_inf = true;
+        } else {
+          // do nothing
+        }
+      } else {
+        LOG(ERROR) << "Find floordiv by 0: " << Expr(op) << ".";
+      }
+      scope_.push_back(range);
+      (op->a).visit_expr(this);
+      scope_.pop_back();
+    }
+  } else if (op->op_type == BinaryOpType::FloorMod) {
+    LOG(WARNING) << "No implement for floormod case: " << Expr(op) << ".";
+  } else {
+    LOG(ERROR) << "Unexpected binary op type in range inference: " << Expr(op) << ".";
+  }
+}
+
+
+void RangeInference::visit(Ref<const Unary> op) {
+  if (op->op_type == UnaryOpType::Neg) {
+    ExtRange range = scope_.back();
+    ExtRangeType range_type = range.range_type();
+    switch (range_type)
+    {
+    case ExtRangeType::LCRC:
+      {Expr tmp = range.left;
+      range.left = neg(range.right);
+      range.right = neg(tmp);}
+      break;
+    case ExtRangeType::LCRO:
+      {range.right = neg(range.left);
+      range.left_inf = true;}
+      break;
+    case ExtRangeType::LORC:
+      {range.left = neg(range.right);
+      range.right_inf = true;}
+      break;
+    default:
+      break;
+    }
+    scope_.push_back(range);
+    (op->a).visit_expr(this);
+    scope_.pop_back();
+  }
 }
 
 } // namespace  Arith

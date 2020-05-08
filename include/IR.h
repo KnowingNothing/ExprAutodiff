@@ -29,7 +29,7 @@
 #include <string>
 
 #include "type.h"
-#include "arith.h"
+// #include "arith.h"
 #include "debug.h"
 
 namespace Boost {
@@ -49,33 +49,33 @@ class Ref {
  public:
     Ref() {}
 
-    Ref(Ref<T> &other) : ptr(other.ptr) {}
+    Ref(const Ref<T> &other) : ptr(other.ptr) {}
 
-    Ref(Ref<T> &&other) : ptr(std::move(other.ptr)) {}
+    Ref(const Ref<T> &&other) : ptr(std::move(other.ptr)) {}
 
     /**
      * allow constructing from sub-class
      */ 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
-    Ref(Ref<U> &other) : ptr(other.real_ptr()) {}
+    Ref(const Ref<U> &other) : ptr(other.real_ptr()) {}
 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
-    Ref(Ref<U> &&other) : ptr(std::move(other.real_ptr())) {}
+    Ref(const Ref<U> &&other) : ptr(std::move(other.real_ptr())) {}
 
     /**
      * allow constructing from shared_ptr of sub-class
      */ 
     template<typename U, typename std::enable_if<std::is_base_of<T, U>::value>::type* = nullptr>
-    Ref(std::shared_ptr<U> _ptr) : ptr(_ptr) {}
+    Ref(const std::shared_ptr<U> _ptr) : ptr(_ptr) {}
 
-    bool defined() { return ptr != nullptr; }
+    bool defined() const { return ptr != nullptr; }
 
     T *get() const { return ptr.get(); }
 
     /**
      * have to expose inner shared_ptr, required by constructor
      */ 
-    void set_ptr(std::shared_ptr<T> other) {
+    void set_ptr(const std::shared_ptr<T> other) {
         this->ptr = other;
     }
 
@@ -87,22 +87,22 @@ class Ref {
 
     T *operator->() const { return ptr.operator->(); }
 
-    Ref<T> &operator=(Ref<T> &b) {
+    Ref<T> &operator=(const Ref<T> &b) {
         this->ptr = b.ptr;
         return *this;
     }
 
-    Ref<T> &operator=(Ref<T> &&b) {
-        swap(this->ptr, b.ptr);
+    Ref<T> &operator=(const Ref<T> &&b) {
+        this->ptr = b.ptr;
         return *this;
     }
 
-    bool operator<(Ref<T> &b) const {
+    bool operator<(const Ref<T> &b) const {
         /* Don't directly compare shared_ptr, for C++20 removes operator< */
         return this->get() < b.get();
     }
 
-    bool operator==(Ref<T> &b) const {
+    bool operator==(const Ref<T> &b) const {
         return this->get() == b.get();
     }
 };
@@ -138,10 +138,52 @@ enum class IRNodeType : short {
 };
 
 
+#define IRNODE_EXPR_TYPE\
+    X(Unary)            \
+    X(Binary)           \
+    X(Select)           \
+    X(Compare)          \
+    X(Call)             \
+    X(Var)              \
+    X(Cast)             \
+    X(Ramp)             \
+    X(Index)            \
+    X(IntImm)           \
+    X(UIntImm)          \
+    X(FloatImm)         \
+    X(StringImm)        \
+    X(Dom)
+
+
+#define IRNODE_STMT_TYPE\
+    X(Kernel)           \
+    X(LoopNest)         \
+    X(IfThenElse)       \
+    X(Move)
+
+
+#define IRNODE_GROUP_TYPE     \
+    X(Kernel)
+
+
+#define IRNODE_OPERATION_TYPE     \
+    X(ComputeOp)                  \
+    X(PlaceholderOp)
+
+
+#define IRNODE_TYPE         \
+    IRNODE_EXPR_TYPE        \
+    IRNODE_STMT_TYPE        \
+    IRNODE_OPERATION_TYPE   \
+    IRNODE_GROUP_TYPE
+
+
 /**
  * forward declaration
  */
 class IRVisitor;
+template <typename FType>
+class IRFunctor;
 class IRMutator;
 class Expr;
 class Stmt;
@@ -242,6 +284,8 @@ class IntImm : public ExprNode, public std::enable_shared_from_this<IntImm> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Ref<const IntImm> make(Type t, const int64_t _value) {
         return std::make_shared<const IntImm>(t, _value);
@@ -269,6 +313,8 @@ class UIntImm : public ExprNode, public std::enable_shared_from_this<UIntImm> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Ref<const UIntImm> make(Type t, const uint64_t _value) {
         return std::make_shared<const UIntImm>(t, _value);
@@ -296,6 +342,8 @@ class FloatImm : public ExprNode, public std::enable_shared_from_this<FloatImm> 
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Ref<const FloatImm> make(Type t, const double _value) {
         return std::make_shared<const FloatImm>(t, _value);
@@ -321,6 +369,8 @@ class StringImm : public ExprNode, public std::enable_shared_from_this<StringImm
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Ref<const StringImm> make(Type t, const std::string _value) {
         return std::make_shared<const StringImm>(t, _value);
@@ -415,6 +465,9 @@ class Expr : public Ref<const ExprNode> {
         return this->get()->mutate_expr(mutator);
     }
 
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
+
     /**
      * cast to other type of reference
      */ 
@@ -471,6 +524,9 @@ class Stmt : public Ref<const StmtNode> {
     Stmt mutate_stmt(IRMutator *mutator) const {
         return this->get()->mutate_stmt(mutator);
     }
+
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     /**
      * cast to other type of reference
@@ -529,6 +585,9 @@ class Group : public Ref<const GroupNode> {
         return this->get()->mutate_group(mutator);
     }
 
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
+
     /**
      * cast to other type of reference
      */ 
@@ -561,6 +620,8 @@ class Unary : public ExprNode, public std::enable_shared_from_this<Unary> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, UnaryOpType _op_type, Expr _a) {
         return std::make_shared<const Unary>(t, _op_type, _a);
@@ -596,6 +657,8 @@ class Binary : public ExprNode, public std::enable_shared_from_this<Binary> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, BinaryOpType _op_type, Expr _a, Expr _b) {
         return std::make_shared<const Binary>(t, _op_type, _a, _b);
@@ -628,6 +691,8 @@ class Compare : public ExprNode, public std::enable_shared_from_this<Compare> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, CompareOpType _op_type, Expr _a, Expr _b) {
         return std::make_shared<const Compare>(t, _op_type, _a, _b);
@@ -650,6 +715,8 @@ class Select : public ExprNode, public std::enable_shared_from_this<Select> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, Expr _cond, Expr _true_value, Expr _false_value) {
         return std::make_shared<const Select>(t, _cond, _true_value, _false_value);
@@ -679,6 +746,8 @@ class Call : public ExprNode, public std::enable_shared_from_this<Call> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
     
     static Expr make(Type t, const std::vector<Expr> &_args, const std::string &_func_name, CallType _call_type) {
         return std::make_shared<const Call>(t, _args, _func_name, _call_type);
@@ -701,6 +770,8 @@ class Cast : public ExprNode, public std::enable_shared_from_this<Cast> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, Type _new_type, Expr _val) {
         return std::make_shared<const Cast>(t, _new_type, _val);
@@ -725,6 +796,8 @@ class Ramp : public ExprNode, public std::enable_shared_from_this<Ramp> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, Expr _base, uint16_t _stride, uint16_t _lanes) {
         return std::make_shared<const Ramp>(t, _base, _stride, _lanes);
@@ -756,6 +829,8 @@ class Var : public ExprNode, public std::enable_shared_from_this<Var> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, const std::string &_name, const std::vector<Expr> &_args,
         const std::vector<uint64_t> &_shape) {
@@ -774,10 +849,16 @@ class Dom : public ExprNode, public std::enable_shared_from_this<Dom> {
     Expr begin;
     Expr extent;
 
+    bool undertermined() const {
+        return !begin.defined() || !extent.defined();
+    }
+
     Dom(Type _type, Expr _begin, Expr _extent) : ExprNode(_type, IRNodeType::Dom), begin(_begin), extent(_extent) {}
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
     
     static Expr make(Type t, Expr _begin, Expr _extent) {
         return std::make_shared<const Dom>(t, _begin, _extent);
@@ -793,7 +874,8 @@ enum class IndexType : uint8_t {
     Thread,
     Block,
     Vectorized,
-    Unrolled
+    Unrolled,
+    Unknown
 };
 
 
@@ -811,6 +893,8 @@ class Index : public ExprNode, public std::enable_shared_from_this<Index> {
 
     Expr mutate_expr(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Expr make(Type t, const std::string &_name, Expr _dom, IndexType _index_type) {
         return std::make_shared<const Index>(t, _name, _dom, _index_type);
@@ -834,6 +918,8 @@ class LoopNest : public StmtNode, public std::enable_shared_from_this<LoopNest> 
 
     Stmt mutate_stmt(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     static Stmt make(const std::vector<Expr> &_index_list, const std::vector<Stmt> &_body_list) {
         return std::make_shared<const LoopNest>(_index_list, _body_list);
@@ -857,6 +943,8 @@ class IfThenElse : public StmtNode, public std::enable_shared_from_this<IfThenEl
 
     Stmt mutate_stmt(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
     
     static Stmt make(Expr _cond, Stmt _true_case, Stmt _false_case) {
         return std::make_shared<const IfThenElse>(_cond, _true_case, _false_case);
@@ -897,6 +985,8 @@ class Move : public StmtNode, public std::enable_shared_from_this<Move> {
 
     Stmt mutate_stmt(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
     
     static Stmt make(Expr _dst, Expr _src, MoveType _move_type=MoveType::MemToMem) {
         return std::make_shared<const Move>(_dst, _src, _move_type);
@@ -927,6 +1017,8 @@ class Kernel : public GroupNode, public std::enable_shared_from_this<Kernel> {
 
     Group mutate_group(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
     
     static Group make(const std::string &_name, const std::vector<Expr> &_inputs,
         const std::vector<Expr> &_outputs, const std::vector<Stmt> &_stmt_list, KernelType _kernel_type) {
@@ -1000,6 +1092,9 @@ class Operation : public Ref<const OperationNode> {
         return this->get()->mutate_operation(mutator);
     }
 
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
+
     /**
      * cast to other type of reference
      */ 
@@ -1027,6 +1122,8 @@ class PlaceholderOp : public OperationNode, public std::enable_shared_from_this<
 
     Operation mutate_operation(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     std::vector<Expr> output_expr() const {
         std::vector<Expr> ret;
@@ -1058,6 +1155,8 @@ class ComputeOp : public OperationNode, public std::enable_shared_from_this<Comp
 
     Operation mutate_operation(IRMutator *mutator) const;
     void visit_node(IRVisitor *visitor) const;
+    // template <typename R, typename... Args>
+    // R visit_(IRFunctor<R(Args...)> *functor, Args... args) const;
 
     std::vector<Expr> output_expr() const {
         std::vector<Expr> ret;

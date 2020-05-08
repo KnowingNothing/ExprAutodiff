@@ -38,6 +38,9 @@ std::string CodeGen_C::print_type(const Type &t) {
   std::ostringstream out;
   switch (t.code)
   {
+  case Internal::TypeCode::Bool:
+    out << "bool";
+    break;
   case Internal::TypeCode::Int:
     out << "int" << t.bits << "_t";
     break;
@@ -123,6 +126,7 @@ void CodeGen_C::visit(Ref<const Unary> op) {
 
 
 void CodeGen_C::visit(Ref<const Binary> op) {
+  oss << "(";
   (op->a).visit_expr(this);
   if (op->op_type == BinaryOpType::Add) {
       oss << " + ";
@@ -146,6 +150,7 @@ void CodeGen_C::visit(Ref<const Binary> op) {
     LOG(ERROR) << "Unknown binay OpType.";
   }
   (op->b).visit_expr(this);
+  oss << ")";
 }
 
 
@@ -170,6 +175,20 @@ void CodeGen_C::visit(Ref<const Compare> op) {
 
 void CodeGen_C::visit(Ref<const Select> op) {
   LOG(ERROR) << "Find select, should be preprocessed to if_then_else.";
+  // print_indent();
+  // oss << "if (";
+  // (op->cond).visit_expr(this);
+  // oss << ") {\n";
+  // enter();
+  // (op->true_value).visit_expr(this);
+  // exit();
+  // print_indent();
+  // oss << "} else {\n";
+  // enter();
+  // (op->false_value).visit_expr(this);
+  // exit();
+  // print_indent();
+  // oss << "}\n";
 }
 
 

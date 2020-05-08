@@ -46,7 +46,7 @@
     }
 
 
-#define ABORT(msg) {fprintf(stderr, __VA_ARGS__); abort(); }
+#define ABORT(msg) {fprintf(stderr, msg); abort(); }
 
 
 enum class LogLevel {
@@ -59,32 +59,38 @@ class LazyLogging {
  private:
     LogLevel log_level;
     bool do_print;
+    std::string file_;
+    int lineno_;
     std::ostringstream oss;
  public:
     LazyLogging() = default;
     LazyLogging(const LazyLogging &&other) : log_level(other.log_level), do_print(other.do_print) {}
-    LazyLogging(LogLevel level, bool do_print=true) : log_level(level), do_print(do_print) {}
+    LazyLogging(LogLevel level, bool do_print=true, std::string file=__FILE__, int lineno=__LINE__) :
+        log_level(level), do_print(do_print), file_(file), lineno_(lineno) {}
     ~LazyLogging() {
         std::chrono::milliseconds ms = std::chrono::duration_cast< std::chrono::milliseconds >(
             std::chrono::system_clock::now().time_since_epoch()
         );
-
-        switch (log_level)
-        {
-        case LogLevel::INFO:
-            std::cerr << "[Info] " << "[time=" << ms.count() << "] ";
-            break;
-        case LogLevel::WARNING:
-            std::cerr << "[Warning] " << "[time=" << ms.count() << "] ";
-            break;
-        case LogLevel::ERROR:
-            std::cerr << "[Error] " << "[time=" << ms.count() << "] ";
-            break;
-        default:
-            break;
+        if (do_print) {
+            switch (log_level)
+            {
+            case LogLevel::INFO:
+                std::cerr << "[Info] " << "[time=" << ms.count() << "] ";
+                break;
+            case LogLevel::WARNING:
+                std::cerr << "[Warning] " << "[time=" << ms.count() << "] file:"
+                          << file_ << " line:" << lineno_ << " ";
+                break;
+            case LogLevel::ERROR:
+                std::cerr << "[Error] " << "[time=" << ms.count() << "] "
+                          << file_ << " line:" << lineno_ << " ";
+                break;
+            default:
+                break;
+            }
+            if (oss.str().size() != 0)
+                std::cerr << oss.str() << "\n";
         }
-        if (do_print && oss.str().size() != 0)
-            std::cerr << oss.str() << "\n";
     }
 
     template<typename T>
@@ -101,19 +107,19 @@ class LazyLogging {
 };
 
 
-#define LOG(T) LazyLogging(LogLevel::T)
+#define LOG(T) LazyLogging(LogLevel::T, true, __FILE__, __LINE__)
 
 
-#define ASSERT(cond)                                        \
-    (                                                       \
-        [=]()-> LazyLogging {                                \
-            if (!(cond)) {                                  \
-                return LazyLogging(LogLevel::ERROR);        \
-            } else {                                        \
-                return LazyLogging(LogLevel::INFO, false);  \
-            }                                               \
-        }()                                                 \
-    )                                                       \
+#define ASSERT(cond)                                                                  \
+    (                                                                                 \
+        [&]()-> LazyLogging {                                                         \
+            if (!(cond)) {                                                            \
+                return LazyLogging(LogLevel::ERROR, true, __FILE__, __LINE__);        \
+            } else {                                                                  \
+                return LazyLogging(LogLevel::INFO, false, __FILE__, __LINE__);        \
+            }                                                                         \
+        }()                                                                           \
+    )                                                                                 \
 
 /*
 The following code is copied from Halide

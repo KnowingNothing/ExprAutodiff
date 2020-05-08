@@ -36,6 +36,7 @@ namespace Boost {
 namespace Internal {
 
 enum class TypeCode : uint8_t {
+    Bool,
     Int,
     UInt,
     Float,
@@ -171,7 +172,8 @@ class Type {
     }
 
     bool operator==(const Type &other) const {
-        return this->code == other.code && this->bits == other.bits && this->lanes_list == other.lanes_list;
+        return ((this->code == other.code) &&
+            (this->bits == other.bits) && (this->lanes_list == other.lanes_list));
     }
 
     bool operator!=(const Type &other) const {
@@ -190,6 +192,8 @@ class Type {
             out << "string";
         } else if (t.code == TypeCode::Handle) {
             out << "handle";
+        } else if (t.code == TypeCode::Bool) {
+            out << "bool";
         }
         out << t.bits << "_t ";
         out << t.lanes_list << ")";
@@ -199,6 +203,15 @@ class Type {
     size_t dim() {
         return lanes_list.size();
     }
+
+
+    static Type bool_scalar() {
+        return Type(
+            TypeCode::Bool,
+            static_cast<uint16_t>(1),
+            LanesList({static_cast<uint16_t>(1)}));
+    }
+
 
     static Type int_scalar(int bits) {
         CHECK(bits > 0 && bits < INT16_MAX, "bits too large: %d", bits);

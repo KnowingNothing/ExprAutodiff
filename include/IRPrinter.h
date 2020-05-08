@@ -88,6 +88,19 @@ class IRPrinter : public IRVisitor {
 
 }  // namespace Internal
 
+
+namespace Internal {
+
+std::ostream &operator<<(std::ostream &out, const Expr& expr);
+
+
+std::ostream &operator<<(std::ostream &out, const Stmt& stmt);
+
+
+std::ostream &operator<<(std::ostream &out, const Group& group);
+
+}  // namespace Internal
+
 }  // namespace Boost
 
 

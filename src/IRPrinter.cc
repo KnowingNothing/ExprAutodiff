@@ -84,6 +84,7 @@ void IRPrinter::visit(Ref<const Unary> op) {
 
 
 void IRPrinter::visit(Ref<const Binary> op) {
+    oss << "(";
     (op->a).visit_expr(this);
     if (op->op_type == BinaryOpType::Add) {
         oss << " + ";
@@ -105,6 +106,7 @@ void IRPrinter::visit(Ref<const Binary> op) {
         oss << " || ";
     }
     (op->b).visit_expr(this);
+    oss << ")";
 }
 
 
@@ -339,6 +341,30 @@ void IRPrinter::visit(Ref<const ComputeOp> op){
     (op->loop_nest_).visit_stmt(this);
     exit();
     oss << "}\n";
+}
+
+}  // namespace Internal
+
+namespace Internal {
+
+std::ostream &operator<<(std::ostream &out, const Expr& expr) {
+  IRPrinter printer;
+  out << printer.print(expr);
+  return out;
+}
+
+
+std::ostream &operator<<(std::ostream &out, const Stmt& stmt) {
+  IRPrinter printer;
+  out << printer.print(stmt);
+  return out;
+}
+
+
+std::ostream &operator<<(std::ostream &out, const Group& group) {
+  IRPrinter printer;
+  out << printer.print(group);
+  return out;
 }
 
 }  // namespace Internal

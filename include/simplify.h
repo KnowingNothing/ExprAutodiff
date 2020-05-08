@@ -22,57 +22,31 @@
  * SOFTWARE.
 */
 
-#include <sstream>
+#ifndef BOOST_SIMPLIFY_H
+#define BOOST_SIMPLIFY_H
+
+#include <memory>
 #include <vector>
+#include <unordered_map>
 
 #include "debug.h"
 #include "IR.h"
-#include "utils.h"
-
+#include "IRVisitor.h"
+#include "IRPrinter.h"
+#include "IRMutator.h"
+#include "IRFunctor.h"
 
 namespace Boost {
 
 using namespace Internal;
 
-namespace Utils {
+
+namespace Simplify {
 
 
-std::string NameGenerator::unique_name(const std::string &name_hint) {
-  std::ostringstream oss;
-  oss << name_hint;
-  if (name_map_.count(name_hint) != 0) {
-    name_map_[name_hint]++; 
-  } else {
-    name_map_[name_hint] = 0;
-  }
-  oss << name_map_[name_hint];
-  return oss.str();
-}
-
-
-bool NameGenerator::has_name(const std::string &name_hint) {
-  return (name_map_.count(name_hint) != 0);
-}
-
-
-std::string NameGenerator::operator()(const std::string &name_hint) {
-  return unique_name(name_hint);
-}
-
-
-Expr substitute_index(const Expr &expr,
-  std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap) {
-    SubstituteIndex suber(vmap);
-    return suber.substitute(expr);
-}
-
-
-Expr substitute_index_by_name(const Expr &expr,
-  std::unordered_map<std::shared_ptr<const Index>, Expr> &vmap) {
-    SubstituteIndexByName suber(vmap);
-    return suber.substitute(expr);
-}
-
-}  // namespace Utils
+}  // namespace Simplify
 
 }  // namespace Boost
+
+
+#endif  // BOOST_SIMPLIFY_H
