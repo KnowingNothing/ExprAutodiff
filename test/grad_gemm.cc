@@ -39,9 +39,13 @@ int main() {
     // C
     Expr expr_C = Var::make(data_type, "C", {i, j}, {M, N});
 
+    // D
+    Expr expr_D = Var::make(data_type, "D", {k, j}, {K, N});
+
     // RHS
-    Expr rhs = Binary::make(data_type, BinaryOpType::Add, expr_C,
-            Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_B));
+    Expr rhs = Binary::make(data_type, BinaryOpType::Add,
+            Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_B),
+            Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_D));
 
     // main stmt
     Stmt main_stmt = Move::make(
@@ -75,10 +79,11 @@ int main() {
 
     // auto diff
     Stmt new_stmt = Boost::Autodiff::grad_stmt(rhs, {i, j, k}, {0, 1}, expr_A.as<Var>(), expr_dC.as<Var>());
-
+    
     std::cout << printer.print(new_stmt) << "\n";
 
     Boost::codegen::CodeGen_C gen;
+    std::cout << "original: " << gen.print(rhs) << "\n";
     std::cout << gen.print(new_stmt) << "\n";
 
     std::cout << "Success!\n";
