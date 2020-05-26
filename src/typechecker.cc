@@ -42,41 +42,48 @@ namespace Boost
       //           << other << "\n";
       IndexConstraint &ret = *new IndexConstraint(*this);
 
-      // fill new names and build map for (new) name->new_index
+      // merge index_names
+      // and build map for (new) name->new_index
       int i = 0;
       std::map<std::string, int> new_index_of;
-
+      for (auto it = index_names.begin(); it != index_names.end(); ++it)
+      {
+        new_index_of[*it] = i++;
+      }
+      i = 0;
       for (auto it = other.index_names.begin(); it != other.index_names.end(); ++it)
       {
         auto it_name = std::find(index_names.begin(), index_names.end(), *it);
         if (it_name == index_names.end()) // index name only in other
         {
           ret.index_names.push_back(*it);
-          new_index_of[*it] = i++;
+          new_index_of[*it] = index_names.size() + (i++);
         }
       }
 
-      for (auto it = other.index_constraints_A_array.begin(); it != other.index_constraints_A_array.end(); ++it)
+      // merge index_constraints_A
+      Eigen::MatrixXd mat_joined = Eigen::MatrixXd::Zero(index_constraints_A.rows() + other.index_constraints_A.rows(),
+                                                        new_index_of.size());
+      for (int i = 0; i < index_constraints_A.rows(); ++i)
       {
-        auto it_name = std::find(index_names.begin(), index_names.end(), other.index_names[it->col()]);
-        if (it_name == index_names.end()) // index name only in other
+        for (int j = 0; j < index_constraints_A.cols(); ++j)
         {
-          ret.index_constraints_A_array.push_back(Eigen::Triplet<double>(
-              it->row() + index_constraints_b.size(),
-              new_index_of[other.index_names[it->col()]] + index_names.size(),
-              it->value()));
-        }
-        else // index name also in ret
-        {
-          int i_index = it_name - index_names.begin();
-          // *it = Eigen::Triplet<double>(it->row() + index_constraints_A_array.size(), i_index, it->value());
-          ret.index_constraints_A_array.push_back(Eigen::Triplet<double>(
-              it->row() + index_constraints_b.size(),
-              i_index,
-              it->value()));
+          mat_joined(i, j) = index_constraints_A(i, j);
         }
       }
+      for (int i = 0; i < other.index_constraints_A.rows(); ++i)
+      {
+        for (int j = 0; j < other.index_constraints_A.cols(); ++j)
+        {
+          mat_joined(i + index_constraints_A.rows(), new_index_of[other.index_names[j]]) = other.index_constraints_A(i, j);
+        }
+      }
+      // std::cout << "mat_joined\n"
+      //           << mat_joined
+      //           << "\n";
+      ret.index_constraints_A = mat_joined;
 
+      // merge index_constraints_b
       Eigen::VectorXd vec_joined(other.index_constraints_b.size() + index_constraints_b.size());
       vec_joined << index_constraints_b, other.index_constraints_b;
       ret.index_constraints_b = vec_joined;
@@ -88,14 +95,11 @@ namespace Boost
 
     std::map<std::string, int> IndexConstraint::solve() const
     {
-      auto index_constraints_A = Eigen::SparseMatrix<double>(index_constraints_b.size(), index_names.size());
-      index_constraints_A.setFromTriplets(index_constraints_A_array.begin(),
-                                          index_constraints_A_array.end());
-
-      Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver(index_constraints_A);
-      auto x = solver.solve(index_constraints_b);
+      Eigen::VectorXd x = index_constraints_A.colPivHouseholderQr().solve(index_constraints_b);
       if (!index_constraints_b.isApprox(index_constraints_A * x))
       {
+        // std::cout << x << "\n";
+        // std::cout << index_constraints_A * x - index_constraints_b << "\n";
         throw TypecheckException("Index onstraints in conflict");
       }
       // std::cout << x << "\n";
@@ -195,10 +199,6 @@ namespace Boost
         auto arg_visitor = ArgVisitor(op->shape[arg_pos]);
         it->visit_expr(&arg_visitor);
         ic = ic.merge(arg_visitor.retrieve());
-        // if (it->get()->node_type() == IRNodeType::Index)
-        // {
-        //   shape[dynamic_cast<const Index *>(it->get())->name] = op->shape[arg_pos];
-        // }
         ++arg_pos;
       }
       type_stack.push(TSType(base_type, ic, is_tensor));

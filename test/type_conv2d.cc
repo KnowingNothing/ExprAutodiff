@@ -80,11 +80,11 @@ int main() {
 
     // W
     Expr expr_W = Var::make(data_type, "W", {k, c, r, s}, {K, C, R, S});
-    // std::cout << "expr_W: " << checker.check(expr_W) << "\n";
+    std::cout << "expr_W: " << checker.check(expr_W) << "\n";
 
     // O
     Expr expr_O = Var::make(data_type, "O", {n, k, p, q}, {N, K, P, Q});
-    // std::cout << "O: " << checker.check(expr_O) << "\n";
+    std::cout << "O: " << checker.check(expr_O) << "\n";
 
     //src
     Expr src = Binary::make(data_type, BinaryOpType::Add, expr_O,

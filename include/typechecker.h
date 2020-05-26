@@ -32,6 +32,7 @@
 #include <map>
 #include <exception>
 #include <Eigen/Sparse>
+#include <Eigen/Dense>
 
 #include "IRVisitor.h"
 
@@ -66,18 +67,18 @@ namespace Boost
     {
     public:
       std::vector<std::string> index_names;
-      std::vector<Eigen::Triplet<double>> index_constraints_A_array;
+      Eigen::MatrixXd index_constraints_A;
       Eigen::VectorXd index_constraints_b;
 
       IndexConstraint() {}
       IndexConstraint(const IndexConstraint &other) : index_names(other.index_names),
-                                                      index_constraints_A_array(other.index_constraints_A_array),
+                                                      index_constraints_A(other.index_constraints_A),
                                                       index_constraints_b(other.index_constraints_b) {}
 
       IndexConstraint(const std::vector<std::string> &_index_names,
-                      const std::vector<Eigen::Triplet<double>> &_index_constraints_A_array,
+                      const Eigen::MatrixXd &_index_constraints_A,
                       const Eigen::VectorXd &_index_constraints_b) : index_names(_index_names),
-                                                                     index_constraints_A_array(_index_constraints_A_array),
+                                                                     index_constraints_A(_index_constraints_A),
                                                                      index_constraints_b(_index_constraints_b) {}
       IndexConstraint &merge(const IndexConstraint &other);
 
@@ -85,20 +86,8 @@ namespace Boost
 
       friend std::ostream &operator<<(std::ostream &out, const IndexConstraint &ic)
       {
-        // for (auto it = ic.index_names.begin(); it != ic.index_names.end(); ++it)
-        // {
-        //   std::cout << *it << ", ";
-        // }
-        // std::cout << "\n";
-        // for (auto it = ic.index_constraints_A_array.begin(); it != ic.index_constraints_A_array.end(); ++it)
-        // {
-        //   std::cout << "(" << it->row() << "," << it->col() << "," << it->value() << ")\n";
-        // }
-        auto index_constraints_A = Eigen::SparseMatrix<double>(ic.index_constraints_b.size(), ic.index_names.size());
-        index_constraints_A.setFromTriplets(ic.index_constraints_A_array.begin(),
-                                            ic.index_constraints_A_array.end());
         out << "A:\n"
-            << static_cast<const Eigen::SparseMatrixBase<Eigen::SparseMatrix<double>> &>(index_constraints_A)
+            << ic.index_constraints_A << "\n"
             << "b:\n"
             << ic.index_constraints_b << "\n";
 
@@ -204,18 +193,17 @@ namespace Boost
       IndexConstraint retrieve()
       {
         auto names = std::vector<std::string>();
-        auto triplets = std::vector<Eigen::Triplet<double>>();
+        auto mat = Eigen::MatrixXd(1, index_weight.size());
         auto shapes = Eigen::VectorXd(1);
 
         int i = 0;
         for (auto it = index_weight.begin(); it != index_weight.end(); ++it)
         {
           names.push_back(it->first);
-          triplets.push_back(Eigen::Triplet<double>(0, i++, it->second));
+          mat(0, i++) = it->second;
         }
         shapes(0) = shape;
-        auto ic = IndexConstraint(names, triplets, shapes);
-        return ic;
+        return IndexConstraint(names, mat, shapes);
       }
 
       // void visit(Ref<const IntImm>) override;
