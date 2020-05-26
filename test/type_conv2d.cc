@@ -125,8 +125,8 @@ int main() {
     Stmt new_stmt = Boost::Autodiff::grad_stmt(src, {n, k, p, q, c, r, s}, {0, 1, 2, 3}, expr_W.as<Var>(), expr_dO.as<Var>());
 
     std::cout << printer.print(new_stmt) << "\n";
-    std::cout << checker.check(dynamic_cast<const Move&>(*new_stmt).src) << "\n";
-    std::cout << checker.check(dynamic_cast<const Move&>(*new_stmt).dst) << "\n";
+
+    std::cout << "grad: " << checker.check(dynamic_cast<const Move&>(*new_stmt).src) << "\n";
 
     Boost::codegen::CodeGen_C gen;
     std::cout << gen.print(new_stmt) << "\n";
