@@ -43,6 +43,16 @@ using namespace Internal;
 
 namespace Simplify {
 
+class SimplifyUnitElement : IRMutator {
+ public:
+  using IRMutator::mutate;
+  using IRMutator::visit;
+  Expr visit(Ref<const Unary>) override;
+  Expr visit(Ref<const Binary>) override;
+};
+
+
+Expr simplify_unit_element(const Expr &expr);
 
 }  // namespace Simplify
 

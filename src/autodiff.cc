@@ -30,6 +30,7 @@
 #include "utils.h"
 #include "autodiff.h"
 #include "IRMutator.h"
+#include "simplify.h"
 
 
 namespace Boost {
@@ -89,12 +90,12 @@ Expr EliminateIndexFloorDivAndMod::visit(Ref<const Binary> op) {
       // bound left expr to unique var
       new_name = context_.get_bound_name(new_a);
       Ref<const Index> new_var = Index::make(
-        new_a->type(), new_name, Dom::make(new_a->type(), Expr(), Expr()), IndexType::Unknown).as<Index>();
+        new_a->type(), new_name, Dom::make(new_a->type(), Expr(0), Expr(-1)), IndexType::Unknown).as<Index>();
       if (new_name == "") {
         // not found
         new_name = name_generator_.unique_name(substitute_name_hint_);
         new_var = Index::make(
-          new_a->type(), new_name, Dom::make(new_a->type(), Expr(), Expr()), IndexType::Unknown).as<Index>();
+          new_a->type(), new_name, Dom::make(new_a->type(), Expr(0), Expr(-1)), IndexType::Unknown).as<Index>();
         // we don't infer the range of expression
         // TODO: infer range for expression
         context_.add(new_name, new_var, new_a, Arith::ExtRange());
@@ -114,7 +115,7 @@ Expr EliminateIndexFloorDivAndMod::visit(Ref<const Binary> op) {
       std::string new_div_name = name_generator_.unique_name(substitute_name_hint_);
       // we should know the left var
       Ref<const Index> new_var = Index::make(
-          new_div->type(), new_div_name, Dom::make(new_div->type(), Expr(), Expr()), IndexType::Unknown).as<Index>();
+          new_div->type(), new_div_name, Dom::make(new_div->type(), Expr(0), Expr(-1)), IndexType::Unknown).as<Index>();
       context_.add(new_div_name, new_var,
           new_div, context_.range_map[new_name].floor_div((int)b_as_int->value()));
       return std::move(new_var);
@@ -133,12 +134,12 @@ Expr EliminateIndexFloorDivAndMod::visit(Ref<const Binary> op) {
       // bound left expr to unique var
       new_name = context_.get_bound_name(new_a);
       Ref<const Index> new_var = Index::make(
-        new_a->type(), new_name, Dom::make(new_a->type(), Expr(), Expr()), IndexType::Unknown).as<Index>();
+        new_a->type(), new_name, Dom::make(new_a->type(), Expr(0), Expr(-1)), IndexType::Unknown).as<Index>();
       if (new_name == "") {
         // not found
         new_name = name_generator_.unique_name(substitute_name_hint_);
         new_var = Index::make(
-          new_a->type(), new_name, Dom::make(new_a->type(), Expr(), Expr()), IndexType::Unknown).as<Index>();
+          new_a->type(), new_name, Dom::make(new_a->type(), Expr(0), Expr(-1)), IndexType::Unknown).as<Index>();
         // we don't infer the range of expression
         // TODO: infer range for expression
         context_.add(new_name, new_var, new_a, Arith::ExtRange());
@@ -158,7 +159,7 @@ Expr EliminateIndexFloorDivAndMod::visit(Ref<const Binary> op) {
       std::string new_mod_name = name_generator_.unique_name(substitute_name_hint_);
       // we should know the left var
       Ref<const Index> new_var = Index::make(
-          new_mod->type(), new_mod_name, Dom::make(new_mod->type(), Expr(), Expr()), IndexType::Unknown).as<Index>();
+          new_mod->type(), new_mod_name, Dom::make(new_mod->type(), Expr(0), Expr(-1)), IndexType::Unknown).as<Index>();
       context_.add(new_mod_name, new_var,
           new_mod, context_.range_map[new_name].floor_div((int)b_as_int->value()));
       return std::move(new_var);
@@ -726,7 +727,7 @@ class GradOp : public IRMutator {
         std::string new_name = generator_.unique_name(dummy_tag_);
         relaxes.insert(new_name);
         Expr v = Index::make(
-          Type::int_scalar(32), new_name, Dom::make(Type::int_scalar(32), Expr(), Expr()), IndexType::Reduce);
+          Type::int_scalar(32), new_name, Dom::make(Type::int_scalar(32), Expr(0), Expr(-1)), IndexType::Reduce);
         Ub.push_back(v);
         context_.index_map[new_name] = v.as<Index>();
         // these vars are unbounded
@@ -778,7 +779,7 @@ class GradOp : public IRMutator {
         if (it.first == "") {
           std::string new_name = generator_.unique_name(dummy_tag_);
           Expr v = Index::make(
-            Type::int_scalar(32), new_name, Dom::make(Type::int_scalar(32), Expr(), Expr()), IndexType::Reduce);
+            Type::int_scalar(32), new_name, Dom::make(Type::int_scalar(32), Expr(0), Expr(-1)), IndexType::Reduce);
           rhs = v;
           context_.index_map[new_name] = v.as<Index>();
           relaxes.insert(new_name);
@@ -792,7 +793,7 @@ class GradOp : public IRMutator {
         if (it.second == "") {
           std::string new_name = generator_.unique_name(dummy_tag_);
           Expr v = Index::make(
-            Type::int_scalar(32), new_name, Dom::make(Type::int_scalar(32), Expr(), Expr()), IndexType::Reduce);
+            Type::int_scalar(32), new_name, Dom::make(Type::int_scalar(32), Expr(0), Expr(-1)), IndexType::Reduce);
           rhs = Arith::add(rhs, v);
           relaxes.insert(new_name);
           context_.index_map[new_name] = v.as<Index>();
@@ -900,6 +901,7 @@ class GradOp : public IRMutator {
       // prepare axis
       std::vector<Ref<const Index>> new_axis;
       std::unordered_map<std::shared_ptr<const Index>, Expr> pos_vmap;
+      std::unordered_map<std::shared_ptr<const Index>, Expr> relax_vmap;
       for (auto it : relaxes) {
         Arith::ExtRange range = context_.range_map[it];
         // use positive range
@@ -908,6 +910,7 @@ class GradOp : public IRMutator {
         Ref<const Index> iv = Index::make(context_.index_map[it]->type(), it,
                 Dom::make(context_.index_map[it]->type(), Expr(0), Expr(pos_ext)), IndexType::Reduce).as<Index>();
         new_axis.push_back(iv);
+        relax_vmap[context_.index_map[it].real_ptr()] = iv;
         context_.range_map[it] = Arith::ExtRange(0, pos_ext, false, false);
       }
       // prepare condition
@@ -916,6 +919,7 @@ class GradOp : public IRMutator {
         result_condition = Arith::logic_and(result_condition, val);
       }
       result_condition = Utils::substitute_index(result_condition, pos_vmap);
+      result_expr = Utils::substitute_index(result_expr, relax_vmap);
 
       std::unordered_map<std::shared_ptr<const Index>, Expr> vmap;
       for (auto kv : results) {
@@ -1045,6 +1049,10 @@ Stmt grad_stmt(Expr expr, std::vector<Expr> all_args, std::vector<int> call_args
   new_body = grader.grad(new_body);
 
   std::cout << "expression after grad:\n" << new_body << "\n";
+
+  new_body = Simplify::simplify_unit_element(new_body);
+
+  std::cout << "expression after simplify:\n" << new_body << "\n";
 
   Stmt stmt = Move::make(new_dst, new_body);
   return stmt;
