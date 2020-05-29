@@ -30,8 +30,15 @@ int main() {
     Expr dom_k = Dom::make(index_type, 0, K);
     Expr k = Index::make(index_type, "k", dom_k, IndexType::Reduce);
 
+    // index c
+    Expr dom_c = Dom::make(index_type, 0, K);
+    Expr c = Index::make(index_type, "c", dom_c, IndexType::Reduce);
+
     // A
     Expr expr_A = Var::make(data_type, "A", {i, k}, {M, K});
+
+    // A
+    Expr expr_A_prime = Var::make(data_type, "A", {i, c}, {M, K});
 
     // B
     Expr expr_B = Var::make(data_type, "B", {k, j}, {K, N});
@@ -40,12 +47,12 @@ int main() {
     Expr expr_C = Var::make(data_type, "C", {i, j}, {M, N});
 
     // D
-    Expr expr_D = Var::make(data_type, "D", {k, j}, {K, N});
+    Expr expr_D = Var::make(data_type, "D", {c, j}, {K, N});
 
     // RHS
     Expr rhs = Binary::make(data_type, BinaryOpType::Add,
             Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_B),
-            Binary::make(data_type, BinaryOpType::Mul, expr_A, expr_D));
+            Binary::make(data_type, BinaryOpType::Mul, expr_A_prime, expr_D));
 
     // main stmt
     Stmt main_stmt = Move::make(
@@ -78,7 +85,7 @@ int main() {
     Expr expr_dC = Var::make(data_type, "dC", {i, j}, {M, N});
 
     // auto diff
-    Stmt new_stmt = Boost::Autodiff::grad_stmt(rhs, {i, j, k}, {0, 1}, expr_A.as<Var>(), expr_dC.as<Var>());
+    Stmt new_stmt = Boost::Autodiff::grad_stmt(rhs, {i, j, k, c}, {0, 1}, expr_A.as<Var>(), expr_dC.as<Var>());
     
     std::cout << printer.print(new_stmt) << "\n";
 

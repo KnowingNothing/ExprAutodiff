@@ -506,12 +506,10 @@ class GradOp : public IRMutator {
       vmap_scope_.push_back(vmap);
       return Arith::sub(new_a, new_b);
     } else if (op->op_type == BinaryOpType::Mul) {
-      std::cout << "check in mul 1\n";
       std::unordered_map<std::shared_ptr<const Index>, Expr> vmap;
       Expr sub_a = op->a;
       Expr sub_b = op->b;
       Expr new_a = grad(op->a);
-      std::cout << "check in mul 2\n";
       for (auto kv : vmap_scope_.back()) {
         vmap[kv.first] = kv.second;
       }
@@ -522,7 +520,6 @@ class GradOp : public IRMutator {
       }
 
       vmap_scope_.pop_back();
-      std::cout << "check in mul 3\n"; 
       Expr new_b = grad(op->b);
       if (!vmap_scope_.back().empty()) {
         sub_a = Utils::substitute_index(sub_a, vmap_scope_.back());
@@ -537,12 +534,10 @@ class GradOp : public IRMutator {
         }
         vmap[kv.first] = kv.second;
       }
-      std::cout << "check in mul 3\n";
       vmap_scope_.pop_back();
       vmap_scope_.push_back(vmap);
       return Arith::add(Arith::mul(new_a, sub_b), Arith::mul(sub_a, new_b));
     } else if (op->op_type == BinaryOpType::Div) {
-      std::cout << "in binay op div\n";
       std::unordered_map<std::shared_ptr<const Index>, Expr> vmap;
       Expr new_a = grad(op->a);
       Expr sub_b = op->b;
@@ -588,7 +583,6 @@ class GradOp : public IRMutator {
               Arith::mul(sub_a, new_b)),
           Arith::mul(sub_b, sub_b));
     } else if (op->op_type == BinaryOpType::FloorDiv) {
-      std::cout << "in binay op floordiv\n";
       std::unordered_map<std::shared_ptr<const Index>, Expr> vmap;
       Expr new_a = grad(op->a);
       Expr sub_b = op->b;

@@ -54,7 +54,7 @@ Expr SimplifyUnitElement::visit(Ref<const Binary> op) {
     if (a_as_int.defined() && b_as_int.defined()) {
       return Expr(a_as_int->value() + b_as_int->value());
     } else if (a_as_float.defined() && b_as_float.defined()) {
-      return Expr(a_as_int->value() + b_as_int->value());
+      return Expr(a_as_float->value() + b_as_float->value());
     } else if (a_as_int.defined()) {
       if (a_as_int->value() == 0) {
         return new_b;
@@ -76,7 +76,7 @@ Expr SimplifyUnitElement::visit(Ref<const Binary> op) {
     if (a_as_int.defined() && b_as_int.defined()) {
       return Expr(a_as_int->value() - b_as_int->value());
     } else if (a_as_float.defined() && b_as_float.defined()) {
-      return Expr(a_as_int->value() - b_as_int->value());
+      return Expr(a_as_float->value() - b_as_float->value());
     } else if (a_as_int.defined()) {
       if (a_as_int->value() == 0) {
         return Unary::make(new_b->type(), UnaryOpType::Neg, new_b);
@@ -98,7 +98,7 @@ Expr SimplifyUnitElement::visit(Ref<const Binary> op) {
     if (a_as_int.defined() && b_as_int.defined()) {
       return Expr(a_as_int->value() * b_as_int->value());
     } else if (a_as_float.defined() && b_as_float.defined()) {
-      return Expr(a_as_int->value() * b_as_int->value());
+      return Expr(a_as_float->value() * b_as_float->value());
     } else if (a_as_int.defined()) {
       if (a_as_int->value() == 0) {
         return Utils::make_const(new_b->type(), 0);
@@ -125,7 +125,9 @@ Expr SimplifyUnitElement::visit(Ref<const Binary> op) {
       }
     } else if (b_as_float.defined()) {
       if (std::abs(b_as_float->value()) < 1e-20) {
-        return Utils::make_const(new_a->type(), 0.0);
+        new_a->type();
+        auto tmp = Utils::make_const(new_a->type(), 0.0);
+        return tmp;
       } else if (std::abs(b_as_float->value() - 1) < 1e-20) {
         return new_a;
       } else if (std::abs(b_as_float->value() + 1) < 1e-20) {
@@ -136,7 +138,7 @@ Expr SimplifyUnitElement::visit(Ref<const Binary> op) {
     if (a_as_int.defined() && b_as_int.defined()) {
       return Expr(a_as_int->value() / b_as_int->value());
     } else if (a_as_float.defined() && b_as_float.defined()) {
-      return Expr(a_as_int->value() / b_as_int->value());
+      return Expr(a_as_float->value() / b_as_float->value());
     } else if (a_as_int.defined()) {
       if (a_as_int->value() == 0) {
         return Utils::make_const(new_b->type(), 0);
@@ -161,8 +163,8 @@ Expr SimplifyUnitElement::visit(Ref<const Binary> op) {
   } else if (op->op_type == BinaryOpType::Mod) {
     if (a_as_int.defined() && b_as_int.defined()) {
       return Expr(a_as_int->value() % b_as_int->value());
-    } else if (a_as_float.defined() && b_as_float.defined()) {
-      return Expr(a_as_int->value() % b_as_int->value());
+    // } else if (a_as_float.defined() && b_as_float.defined()) {
+    //   return Expr((a_as_float->value()) % (b_as_float->value()));
     } else if (a_as_int.defined()) {
       if (a_as_int->value() == 0) {
         return Utils::make_const(new_b->type(), 0);
