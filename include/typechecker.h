@@ -136,8 +136,9 @@ namespace Boost
         }
         else
         {
-          out << "Tensor(IndexConstraint:\n"
-              << t.ic << "(PossibleSolution=(";
+          // out << "Tensor(IndexConstraint:\n"
+          //     << t.ic << "(PossibleSolution=(";
+          out << "Tensor(shape=(";
           auto x = t.ic.solve();
           bool first_flag = true;
           // out << "Solution:\n";
@@ -152,7 +153,7 @@ namespace Boost
           }
           out << "), ";
         }
-        out << "BaseType=";
+        out << "dtype=";
         if (t.basetype == BaseType::Int)
         {
           out << "int";
