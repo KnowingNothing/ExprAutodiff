@@ -1,0 +1,5 @@
+add_executable(auto test.cc)
+target_link_libraries(auto Parser)
+find_library(FLEX_LIB fl)
+target_link_libraries(auto ${FLEX_LIB})
+target_link_libraries(auto ${LIB_NAME})

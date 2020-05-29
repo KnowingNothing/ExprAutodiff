@@ -80,3 +80,4 @@ endif()
 
 add_subdirectory(test)
 add_subdirectory(project1)
+add_subdirectory(parser)
