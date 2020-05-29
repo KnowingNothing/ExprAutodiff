@@ -19,7 +19,15 @@ BISON_TARGET(auto_parser auto.bison auto.tab.c)
 
 find_package(FLEX)
 FLEX_TARGET(auto_lexer auto.flex lex.yy.c)
-aux_source_directory(. DIR_LIB_SRCS)
-add_library (Parser ${DIR_LIB_SRCS} lex.yy.c auto.tab.c)
+# aux_source_directory(. DIR_LIB_SRCS)
+file(GLOB PARSER_CXX
+    ./*.cc
+    )
+
+file(GLOB PARSER_C
+    ./*.c
+    )
+add_library (Parser ${PARSER_C} ${PARSER_CXX})
+target_link_libraries(Parser ${LIB_NAME})
 
 add_subdirectory(test)

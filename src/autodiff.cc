@@ -403,11 +403,11 @@ void solve_substitutions(SubstituteContext &context,
     Expr unique_binding = solve_multi_bindings(context, bindings[sub_var_name], unused, conditions);
     std::unordered_map<std::shared_ptr<const Index>, Expr> vmap;
     vmap[context.index_map[sub_var_name].real_ptr()] = unique_binding;
-    std::cout << "check solve sub var: " << sub_var_name << "\n";
+    // std::cout << "check solve sub var: " << sub_var_name << "\n";
     for (int j = i - 1; j >= 0; --j) {
       std::vector<Expr> new_bindings;
       for (auto expr : bindings[context.index_names[j]]) {
-        std::cout << "target expr: " << expr << "\n";
+        // std::cout << "target expr: " << expr << "\n";
         new_bindings.push_back(Utils::substitute_index(expr, vmap));
       }
       // replace bindings
@@ -464,9 +464,9 @@ class GradOp : public IRMutator {
   // Expr visit(Ref<const Unary>) override;
 
   Expr visit(Ref<const Binary> op) override {
-    std::cout << "in binay op\n";
+    // std::cout << "in binay op\n";
     if (op->op_type == BinaryOpType::Add) {
-      std::cout << "in binay op add\n";
+      // std::cout << "in binay op add\n";
       std::unordered_map<std::shared_ptr<const Index>, Expr> vmap;
       Expr new_a = grad(op->a);
       for (auto kv : vmap_scope_.back()) {
@@ -486,7 +486,7 @@ class GradOp : public IRMutator {
       vmap_scope_.push_back(vmap);
       return Arith::add(new_a, new_b);
     } else if (op->op_type == BinaryOpType::Sub) {
-      std::cout << "in binay op sub\n";
+      // std::cout << "in binay op sub\n";
       std::unordered_map<std::shared_ptr<const Index>, Expr> vmap;
       Expr new_a = grad(op->a);
       for (auto kv : vmap_scope_.back()) {
@@ -644,12 +644,12 @@ class GradOp : public IRMutator {
         extractor.get_coefficients(new_arg, tmp);
         coeffs.push_back(tmp);
         for (auto kv : tmp) {
-          std::cout << "check after extracting: " << kv.first << " = " << kv.second << "\n";
+          // std::cout << "check after extracting: " << kv.first << " = " << kv.second << "\n";
         }
       }
 
-      std::cout << "check context after elimination:\n";
-      std::cout << context_ << "\n";
+      // std::cout << "check context after elimination:\n";
+      // std::cout << context_ << "\n";
 
       int cols = (int)context_.index_names.size();
       int rows = (int)coeffs.size();
@@ -669,48 +669,48 @@ class GradOp : public IRMutator {
         }
       }
 
-      std::cout << "check trans before:\n";
+      // std::cout << "check trans before:\n";
       for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-          std::cout << trans[i][j] << " ";
+          // std::cout << trans[i][j] << " ";
         }
-        std::cout << "\n";
+        // std::cout << "\n";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
 
       // compute simith normal form
       Arith::Matrix<int> U(rows, rows);
       Arith::Matrix<int> V(cols, cols);
       int dims = Arith::smith_normalize(trans, U, V);
 
-      std::cout << "check dim=" << dims << "\n";
+      // std::cout << "check dim=" << dims << "\n";
 
-      std::cout << "check trans after:\n";
+      // std::cout << "check trans after:\n";
       for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
-          std::cout << trans[i][j] << " ";
+          // std::cout << trans[i][j] << " ";
         }
-        std::cout << "\n";
+        // std::cout << "\n";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
 
-      std::cout << "check U:\n";
+      // std::cout << "check U:\n";
       for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < rows; ++j) {
-          std::cout << U[i][j] << " ";
+          // std::cout << U[i][j] << " ";
         }
-        std::cout << "\n";
+        // std::cout << "\n";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
 
-      std::cout << "check V:\n";
+      // std::cout << "check V:\n";
       for (int i = 0; i < cols; ++i) {
         for (int j = 0; j < cols; ++j) {
-          std::cout << V[i][j] << " ";
+          // std::cout << V[i][j] << " ";
         }
-        std::cout << "\n";
+        // std::cout << "\n";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
 
       // explain the results:
       std::vector<Expr> Ub = Arith::relax_matrix_array_product(U, compute_args_);
@@ -728,22 +728,22 @@ class GradOp : public IRMutator {
         context_.range_map[new_name] = Arith::ExtRange();
       }
 
-      std::cout << "check relaxes:\n";
+      // std::cout << "check relaxes:\n";
       for (auto it : relaxes) {
-        std::cout << it << " ";
+        // std::cout << it << " ";
       }
-      std::cout << "\n\n";
+      // std::cout << "\n\n";
 
       // bindings, transformation from original index to new index
       // one var may have many bindings
       // for example, i = r0, i = r1 * 4 + s0
       std::unordered_map<std::string, std::vector<Expr>> bindings;
       std::vector<Expr> VUb = Arith::relax_matrix_array_product(V, Ub);
-      std::cout << "check VUb:\n";
+      // std::cout << "check VUb:\n";
       for (auto val : VUb) {
-        std::cout << val << "\n";
+        // std::cout << val << "\n";
       }
-      std::cout << "\n\n";
+      // std::cout << "\n\n";
       for (int i = 0; i < cols; ++i) {
         Expr bind_val = VUb[i];
         if (i < dims) {
@@ -804,15 +804,15 @@ class GradOp : public IRMutator {
         }
       }
 
-      std::cout << "check original bindings:\n";
+      // std::cout << "check original bindings:\n";
       for (auto kv : bindings) {
-        std::cout << kv.first << " : [ ";
+        // std::cout << kv.first << " : [ ";
         for (auto val : kv.second) {
-          std::cout << val << " "; 
+          // std::cout << val << " "; 
         }
-        std::cout << "]\n";
+        // std::cout << "]\n";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
 
       // resolve the bindings
       std::unordered_map<std::string, Expr> results;
@@ -842,9 +842,9 @@ class GradOp : public IRMutator {
         // }
         Arith::RangeInference infer(context_.range_map[kv.first]);
         infer.do_infer(kv.second);
-        std::cout << "check range inference:\n";
+        // std::cout << "check range inference:\n";
         for (auto kkv : infer.range_map) {
-          std::cout << kkv.first << ": [" << kkv.second.left << ", " << kkv.second.right << ")\n";
+          // std::cout << kkv.first << ": [" << kkv.second.left << ", " << kkv.second.right << ")\n";
           if (context_.range_map.count(kkv.first) == 0 ||
               context_.range_map[kkv.first].range_type() != Arith::ExtRangeType::LCRC) {
             if (kkv.second.range_type() == Arith::ExtRangeType::LCRC)
@@ -863,20 +863,20 @@ class GradOp : public IRMutator {
         }
       }
 
-      std::cout << "check conditions:\n";
+      // std::cout << "check conditions:\n";
       for (auto it : conditions) {
-        std::cout << it << " ";
+        // std::cout << it << " ";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
 
-      std::cout << "check bindings:\n";
+      // std::cout << "check bindings:\n";
       for (auto kv : results) {
-        std::cout << kv.first << " = " << kv.second << "\n";
+        // std::cout << kv.first << " = " << kv.second << "\n";
       }
-      std::cout << "\n";
+      // std::cout << "\n";
 
       // check if any var his no concrete range
-      // std::cout << "\ncheck relax ranges:\n";
+      // // std::cout << "\ncheck relax ranges:\n";
       for (auto it : relaxes) {
         ASSERT(context_.range_map.count(it) != 0) << "Internal error: fail to infer range for: "
                                                   << it << ".\n";
@@ -985,8 +985,8 @@ Expr ensure_unique_var(const Expr& body, SubstituteContext &context,
       std::string name_hint = index->name;
       std::string new_name = generator.unique_name(name_hint);
       if (name_hint != new_name) {
-        LOG(WARNING) << "Find repeat axis iter_var name: " << name_hint << "\n"
-                    << "change to new name: " << new_name;
+        // LOG(WARNING) << "Find repeat axis iter_var name: " << name_hint << "\n"
+        //             << "change to new name: " << new_name;
       }
       // new_iter_vars.push_back(IterVarNode::make(iv->dom,
       //   Var(new_name, iv->var->dtype), iv->iter_type, iv->thread_tag));
@@ -1008,7 +1008,7 @@ Expr ensure_unique_var(const Expr& body, SubstituteContext &context,
 
 Stmt grad_stmt(Expr expr, std::vector<Expr> all_args, std::vector<int> call_args_index,
   Ref<const Var> grad_to, Ref<const Var> doutput) {
-  std::cout << "check original body:\n" << expr << "\n";
+  // std::cout << "check original body:\n" << expr << "\n";
 
   Utils::NameGenerator gen;
   SubstituteContext context;
@@ -1029,9 +1029,9 @@ Stmt grad_stmt(Expr expr, std::vector<Expr> all_args, std::vector<int> call_args
 
   Expr new_body = ensure_unique_var(expr, context, gen, all_args, new_all_args);
 
-  std::cout << "check initial context:\n";
-  std::cout << context << "\n";
-  std::cout << "check new_body:\n" << new_body << "\n"; 
+  // std::cout << "check initial context:\n";
+  // std::cout << context << "\n";
+  // std::cout << "check new_body:\n" << new_body << "\n"; 
 
   std::vector<Expr> new_call_args;
   for (auto it : call_args_index) {
@@ -1042,11 +1042,11 @@ Stmt grad_stmt(Expr expr, std::vector<Expr> all_args, std::vector<int> call_args
 
   new_body = grader.grad(new_body);
 
-  std::cout << "expression after grad:\n" << new_body << "\n";
+  // std::cout << "expression after grad:\n" << new_body << "\n";
 
   new_body = Simplify::simplify_unit_element(new_body);
 
-  std::cout << "expression after simplify:\n" << new_body << "\n";
+  // std::cout << "expression after simplify:\n" << new_body << "\n";
 
   Stmt stmt = Move::make(new_dst, new_body);
   return stmt;

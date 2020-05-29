@@ -181,8 +181,9 @@ void IRPrinter::visit(Ref<const Var> op) {
             }
         }
         oss << ">";
-    } else {
-    oss << "[";
+    } 
+    if (print_index) {
+        oss << "[";
         for (size_t i = 0; i < op->args.size(); ++i) {
             op->args[i].visit_expr(this);
             if (i < op->args.size() - 1) {

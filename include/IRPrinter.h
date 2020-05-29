@@ -41,10 +41,19 @@ class IRPrinter : public IRVisitor {
         indent = 0;
         print_range = false;
         print_arg = false;
+        print_index = true;
     }
     std::string print(const Expr&);
     std::string print(const Stmt&);
     std::string print(const Group&);
+
+    void enable_print_arg() { print_arg = true; }
+
+    void enable_print_index() { print_index = true; }
+
+    void disable_print_arg() { print_arg = false; }
+
+    void disable_print_index() { print_index = false; }
 
     void print_indent() {
         for (int i = 0; i < indent; ++i)
@@ -84,6 +93,7 @@ class IRPrinter : public IRVisitor {
     int indent;
     bool print_range;
     bool print_arg;
+    bool print_index;
 };
 
 }  // namespace Internal
