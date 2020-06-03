@@ -210,6 +210,18 @@ namespace Boost
       index_weight[op->name] = 1;
     }
 
+    void ArgVisitor::visit(Ref<const Unary> op)
+    {
+      // only support things like -i, not something like -(i+j)
+      (op->a).visit_expr(this);
+      auto i_ptr = dynamic_cast<const Index*>(op->a.get());
+      if (!i_ptr) {
+        LOG(ERROR) << "unsupport index forms";
+      }
+      index_weight[i_ptr->name] = -index_weight[i_ptr->name];
+      shape -= 2;
+    }
+
     void ArgVisitor::visit(Ref<const Binary> op)
     {
       (op->a).visit_expr(this);

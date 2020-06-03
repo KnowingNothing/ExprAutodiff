@@ -186,6 +186,7 @@ namespace Boost
       std::stack<std::string> op_stack; // consider using enum
     };
 
+    /* Buggy impl, only supports i, j, i+(-j)... */
     class ArgVisitor : public Internal::IRVisitor
     {
     public:
@@ -209,7 +210,7 @@ namespace Boost
 
       // void visit(Ref<const IntImm>) override;
       // void visit(Ref<const FloatImm>) override;
-      // void visit(Ref<const Unary>) override;
+      void visit(Ref<const Unary>) override;
       void visit(Ref<const Binary>) override;
       void visit(Ref<const Index>) override;
 
